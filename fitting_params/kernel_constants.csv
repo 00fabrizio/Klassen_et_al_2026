@@ -1,0 +1,2 @@
+,kappa_f,kappa_th,Sigma_t_src,R_kernel,L_kernel,evap_kappa_grid,therm_kappa_grid,note
+fixed,0.15,0.128,0.346286,1.0,45.0,"linspace(0,1.5,30)","linspace(0,0.5,20)","two-group thermal kernel over a cascade source; kappa_f fixed in precompute_kernels.py, kappa_th enters as kappa3/kappa4"
