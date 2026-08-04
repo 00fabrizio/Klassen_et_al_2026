@@ -22,7 +22,7 @@ class Model():
     because their free-parameter lists differ in both length and order and
     are consumed positionally by curve_fit:
 
-        prefac1  19 parameters, xi leading
+        prefac1  18 parameters, xi leading
         prefac2  20 parameters, E_th and n trailing
 
     Fitted values live in fitting_params/{species}_prefac{1,2}.csv, with
@@ -55,15 +55,19 @@ class Model():
             nan=0.0, posinf=0.0, neginf=0.0,
         )
 
-    def ep(self, X, A, gamma, kappa):
+    def ep(self, X, A, gamma, kappa_f, kappa_s):
         (Z, R, E, EP) = X
         P = gamma * self.XT[self.iEp, self.iEn]
-        return A * thermal_diff(P=P, kappa=kappa, r=R, z=Z) * epithermal_spectrum(E)
+        return A * thermal_diff(P=P, kappa_f=kappa_f, kappa_s=kappa_s, r=R, z=Z,
+                         species=self.species) \
+            * epithermal_spectrum(E)
 
-    def th(self, X, A, gamma, kappa):
+    def th(self, X, A, gamma, kappa_f, kappa_s):
         (Z, R, E, EP) = X
         P = gamma * self.XT[self.iEp, self.iEn]
-        return A * thermal_diff(P=P, kappa=kappa, r=R, z=Z) * thermal_spectrum(E)
+        return A * thermal_diff(P=P, kappa_f=kappa_f, kappa_s=kappa_s, r=R, z=Z,
+                         species=self.species) \
+            * thermal_spectrum(E)
 
     def get_component(self, name):
         return {
@@ -89,42 +93,44 @@ class Model():
     # ------------------------------------------------------------------
     def _regimes(self, X,
                  A1, gamma1, Sigma_t, Sigma, d1, a, w_c,
-                 A2, gamma2, d2, kappa2, Epk,
-                 A3, gamma3, kappa3,
-                 A4, gamma4, kappa4):
+                 A2, gamma2, d2, kappa_ev, Epk,
+                 A3, gamma3, A4, gamma4,
+                 kappa_f, kappa_s):
+        # epithermal and thermal share one slow-neutron spatial kernel; they
+        # differ only in amplitude, production range and energy spectrum
         return (  self.cas(X, A1, gamma1, Sigma_t, Sigma, d1, a, w_c)
-                + self.ev( X, A2, gamma2, d2, kappa2, Epk)
-                + self.ep( X, A3, gamma3, kappa3)
-                + self.th( X, A4, gamma4, kappa4) )
+                + self.ev( X, A2, gamma2, d2, kappa_ev, Epk)
+                + self.ep( X, A3, gamma3, kappa_f, kappa_s)
+                + self.th( X, A4, gamma4, kappa_f, kappa_s) )
 
     def spectral_energy_fluence_prefac1(self, X,
                                         xi,
                                         A1, gamma1, Sigma_t, Sigma, d1, a, w_c,
-                                        A2, gamma2, d2, kappa2, Epk,
-                                        A3, gamma3, kappa3,
-                                        A4, gamma4, kappa4):
-        """Power-law prefactor. 19 parameters, xi leading."""
+                                        A2, gamma2, d2, kappa_ev, Epk,
+                                        A3, gamma3, A4, gamma4,
+                                        kappa_f, kappa_s):
+        """Power-law prefactor. 18 parameters, xi leading."""
         (Z, R, E, EP) = X
         return self.prefac1(EP, xi) * self._regimes(
             X,
             A1, gamma1, Sigma_t, Sigma, d1, a, w_c,
-            A2, gamma2, d2, kappa2, Epk,
-            A3, gamma3, kappa3,
-            A4, gamma4, kappa4,
+            A2, gamma2, d2, kappa_ev, Epk,
+            A3, gamma3, A4, gamma4,
+            kappa_f, kappa_s,
         )
 
     def spectral_energy_fluence_prefac2(self, X,
                                         A1, gamma1, Sigma_t, Sigma, d1, a, w_c,
-                                        A2, gamma2, d2, kappa2, Epk,
-                                        A3, gamma3, kappa3,
-                                        A4, gamma4, kappa4,
+                                        A2, gamma2, d2, kappa_ev, Epk,
+                                        A3, gamma3, A4, gamma4,
+                                        kappa_f, kappa_s,
                                         E_th, n):
         """Saturation-curve prefactor. 20 parameters, E_th and n trailing."""
         (Z, R, E, EP) = X
         return self.prefac2(EP, E_th, n) * self._regimes(
             X,
             A1, gamma1, Sigma_t, Sigma, d1, a, w_c,
-            A2, gamma2, d2, kappa2, Epk,
-            A3, gamma3, kappa3,
-            A4, gamma4, kappa4,
+            A2, gamma2, d2, kappa_ev, Epk,
+            A3, gamma3, A4, gamma4,
+            kappa_f, kappa_s,
         )
