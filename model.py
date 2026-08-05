@@ -47,6 +47,7 @@ class Model():
              * cascade(Z, Sigma_t=Sigma_t, P=P) \
              * cascade_spectrum(E, A, alpha=alpha, t_c=t_c, w_c=w_c)
 
+
     def ev(self, X, A, gamma, alpha, kappa, T):
         (Z, R, E, EP) = X
         P = gamma * self.XT[self.iEp, self.iEn]

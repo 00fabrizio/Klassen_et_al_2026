@@ -102,3 +102,40 @@ def thermal_diff(P, kappa_f, kappa_s, z, r, species='proton'):
 
     return (_therm_one_group(P, kf, z, r, species)
             - _therm_one_group(P, ks, z, r, species)) / d
+
+# ----------------------------------------------------------------------
+# coupled ballistic cascade kernel (replaces cascade_lateral x cascade)
+# ----------------------------------------------------------------------
+from .precompute_cascade import (                                  # noqa: E402
+    P_HAT_GRID_C, SIGMA_H_GRID, N_ANG_GRID, XI_GRID_C, RHO_GRID_C,
+    NP_C, NS_C, NN_C, NZ_C, NR_C, cascade_path,
+)
+
+cascade_dim = np.memmap(cascade_path, dtype="float32", mode="r",
+                        shape=(NP_C, NS_C, NN_C, NZ_C, NR_C))
+_cascade_interp = RegularGridInterpolator(
+    (P_HAT_GRID_C, SIGMA_H_GRID, N_ANG_GRID, XI_GRID_C, RHO_GRID_C),
+    cascade_dim, bounds_error=False, fill_value=None,   # clamp, never zero out
+)
+
+
+def cascade_coupled(P, Sigma_h, n_ang, z, r):
+    """Coupled first-flight cascade kernel: spatial factor for (P, Sigma_h, n_ang).
+
+    Supersedes cascade_lateral(r) * cascade(z), which could not reproduce the
+    rho-dependent shift of the axial peak.
+    """
+    P = np.asarray(P, dtype=float)
+    Sigma_h = np.asarray(Sigma_h, dtype=float)
+    n_ang = np.asarray(n_ang, dtype=float)
+    z = np.asarray(z, dtype=float)
+    r = np.asarray(r, dtype=float)
+
+    P_hat = np.clip(P / L_KERNEL, 0.0, 1.0)
+    xi = np.clip(z / L_KERNEL, 0.0, 1.0)
+    rho = np.clip(r / R_KERNEL, RHO_GRID_C[0], RHO_GRID_C[-1])
+    s_c = np.clip(Sigma_h, SIGMA_H_GRID[0], SIGMA_H_GRID[-1])
+    n_c = np.clip(n_ang, N_ANG_GRID[0], N_ANG_GRID[-1])
+
+    A, B, C, D, E = np.broadcast_arrays(P_hat, s_c, n_c, xi, rho)
+    return np.maximum(_cascade_interp(np.stack([A, B, C, D, E], axis=-1)), 0.0)
