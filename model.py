@@ -59,15 +59,13 @@ class Model():
     def ep(self, X, A, gamma, kappa_f, kappa_s):
         (Z, R, E, EP) = X
         P = gamma * self.XT[self.iEp, self.iEn]
-        return A * thermal_diff(P=P, kappa_f=kappa_f, kappa_s=kappa_s, r=R, z=Z,
-                         species=self.species) \
+        return A * slow_diff(P=P, kappa_f=kappa_f, kappa_s=kappa_s, r=R, z=Z) \
             * epithermal_spectrum(E)
 
     def th(self, X, A, gamma, kappa_f, kappa_s):
         (Z, R, E, EP) = X
         P = gamma * self.XT[self.iEp, self.iEn]
-        return A * thermal_diff(P=P, kappa_f=kappa_f, kappa_s=kappa_s, r=R, z=Z,
-                         species=self.species) \
+        return A * slow_diff(P=P, kappa_f=kappa_f, kappa_s=kappa_s, r=R, z=Z) \
             * thermal_spectrum(E)
 
     def get_component(self, name):
@@ -97,8 +95,9 @@ class Model():
                  A2, gamma2, d2, kappa_ev, Epk,
                  A3, gamma3, A4, gamma4,
                  kappa_f, kappa_s):
-        # epithermal and thermal share one slow-neutron spatial kernel; they
-        # differ only in amplitude, production range and energy spectrum
+        # epithermal and thermal share one slow-neutron spatial kernel over the
+        # same cylindrical source as the other regimes; they differ only in
+        # amplitude, production range and energy spectrum
         return (  self.cas(X, A1, gamma1, Sigma_t, Sigma, d1, a, w_c)
                 + self.ev( X, A2, gamma2, d2, kappa_ev, Epk)
                 + self.ep( X, A3, gamma3, kappa_f, kappa_s)

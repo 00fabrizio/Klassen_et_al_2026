@@ -139,3 +139,78 @@ def cascade_coupled(P, Sigma_h, n_ang, z, r):
 
     A, B, C, D, E = np.broadcast_arrays(P_hat, s_c, n_c, xi, rho)
     return np.maximum(_cascade_interp(np.stack([A, B, C, D, E], axis=-1)), 0.0)
+
+
+# ----------------------------------------------------------------------
+# slow-neutron kernel over the UNIFORM cylindrical source
+# ----------------------------------------------------------------------
+from .precompute_slow import (                                     # noqa: E402
+    KAPPA_SLOW_GRID, NK_SLOW, slow_path,
+)
+
+slow_dim = np.memmap(slow_path, dtype="float32", mode="r",
+                     shape=(NP, NK_SLOW, NZ, NR))
+_slow_interp = RegularGridInterpolator(
+    (P_HAT_GRID, KAPPA_SLOW_GRID, XI_GRID, RHO_GRID),
+    slow_dim, bounds_error=False, fill_value=None,
+)
+
+
+def _slow_one_group(P, kappa, z, r):
+    P_hat = np.clip(np.asarray(P, dtype=float) / L_KERNEL, 0.0, 1.0)
+    k_hat = np.clip(np.asarray(kappa, dtype=float) * R_KERNEL,
+                    KAPPA_SLOW_GRID[0], KAPPA_SLOW_GRID[-1])
+    xi = np.clip(np.asarray(z, dtype=float) / L_KERNEL, 0.0, 1.0)
+    rho = np.asarray(r, dtype=float) / R_KERNEL
+    A, B, C, D = np.broadcast_arrays(P_hat, k_hat, xi, rho)
+    return _slow_interp(np.stack([A, B, C, D], axis=-1))
+
+
+def slow_diff(P, kappa_f, kappa_s, z, r):
+    """Two-group slow-neutron kernel over the uniform cylindrical source.
+
+        F_2 = [F_1(kappa_f) - F_1(kappa_s)] / (kappa_s^2 - kappa_f^2)
+
+    Species-independent: the source is the same cylinder used by the cascade
+    and evaporation regimes, so unlike thermal_diff this carries no Sigma_t and
+    needs no per-species table. Symmetric under kappa_f <-> kappa_s.
+    """
+    kf, ks = float(kappa_f), float(kappa_s)
+    d = ks ** 2 - kf ** 2
+    if abs(d) < 1e-3:                       # removable singularity
+        h = 1e-3
+        km = 0.5 * (kf + ks)
+        dF = (_slow_one_group(P, km + h, z, r)
+              - _slow_one_group(P, max(km - h, 0.0), z, r)) / (2 * h)
+        return -dF / (2 * max(km, 1e-6))
+    return (_slow_one_group(P, kf, z, r) - _slow_one_group(P, ks, z, r)) / d
+
+
+# ----------------------------------------------------------------------
+# single-diffusion-length slow kernel (squared propagator)
+# ----------------------------------------------------------------------
+from .precompute_slow import sq_path                               # noqa: E402
+
+slow_sq_dim = np.memmap(sq_path, dtype="float32", mode="r",
+                        shape=(NP, NK_SLOW, NZ, NR))
+_slow_sq_interp = RegularGridInterpolator(
+    (P_HAT_GRID, KAPPA_SLOW_GRID, XI_GRID, RHO_GRID),
+    slow_sq_dim, bounds_error=False, fill_value=None,
+)
+
+
+def slow_diff_single(P, kappa, z, r):
+    """Two-group slow kernel with a single diffusion length.
+
+    Collapsing kappa_f = kappa_s = kappa gives the squared propagator
+    1/(k^2+kappa^2)^2, tabulated directly, so this is one lookup rather than a
+    difference of two -- no removable singularity and no cancellation. The
+    migration length is M = sqrt(2)/kappa.
+    """
+    P_hat = np.clip(np.asarray(P, dtype=float) / L_KERNEL, 0.0, 1.0)
+    k_hat = np.clip(np.asarray(kappa, dtype=float) * R_KERNEL,
+                    KAPPA_SLOW_GRID[0], KAPPA_SLOW_GRID[-1])
+    xi = np.clip(np.asarray(z, dtype=float) / L_KERNEL, 0.0, 1.0)
+    rho = np.asarray(r, dtype=float) / R_KERNEL
+    A, B, C, D = np.broadcast_arrays(P_hat, k_hat, xi, rho)
+    return _slow_sq_interp(np.stack([A, B, C, D], axis=-1))
