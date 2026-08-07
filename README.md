@@ -17,6 +17,8 @@ fitting_params/           fitted parameters, columns match the entry-point signa
 data/                     raw FLUKA USRTRACK output (archival) + range tables
 npy_data/                 parsed cache of data/  (not tracked; rebuild, see below)
 toolbox/                  spatial/spectral factors, diffusion kernels, data loading
+  diffusion_integrals/      precomputed kernel tables + their builders
+  metrics/bias_curves.py    parallel, cached Eq. 10 bias curves
 fit.ipynb                 fits the model parameters
 ```
 
@@ -125,25 +127,194 @@ Option 2.
 
 ### Option 2 — coupled ballistic cascade (`model_coupled.py`)
 
-Replaces the separable cascade with the coupled first-flight integral
+Replaces the separable cascade with the coupled first-flight integral over the
+source volume `V`,
 
 ```
-phi(rho, z; P, Sigma_h, n_ang)
-    = int_0^P dz' S(z') cos^n(theta) exp(-Sigma_h s) / (4 pi s^2)
+F(rho, z) = int_V d3x' g(theta) exp(-Sigma_h s) / (4 pi s^2)
 ```
 
-with `s` the slant distance from source point to field point, tabulated by
+with `s = |x - x'|` and `cos(theta) = (z - z')/s`, tabulated by
 `toolbox/diffusion_integrals/precompute_cascade.py`. Parameter mapping:
 `(Sigma_t, sigma_cas) -> (Sigma_h, n_ang)`, so the vector keeps its length and
 the same fitting code drives both options. Setting `g(theta) = delta(forward)`
 recovers the Option 1 axial law, so that profile is the forward limit of this
 kernel rather than a separate ingredient.
 
-**Proton — `fitting_params/proton_coupled.csv`** (limited testing; carbon not done)
+#### Spherical form — why there is no singularity
 
-`Sigma_h = 0.0218` cm^-1 (L = 46 cm), `n_ang = 3.09`, `kappa_ev = 0.308`, with
-`E_pk = 4 MeV` held. Fitted on a **single** primary energy (100 MeV) with `E_th`,
-`n` and the whole slow-neutron sector held fixed, then scored on all 50.
+In cylindrical coordinates about the beam axis the integrand carries a `1/s^2`
+singularity wherever the field point lies inside the source. It is integrable,
+but awkwardly: evaluating a line source on a radial grid and convolving with the
+disk in Hankel space is exact in principle yet inherits that singularity in the
+intermediate profile, and read ~12 % low inside the source on a 0.18 cm grid.
+
+Putting the origin at the **field** point removes it outright. With
+`x' = x - s*u` the volume element is `d3x' = s^2 ds dOmega`, and the `s^2`
+cancels the `1/s^2` exactly:
+
+```
+F = (1/4pi) int dOmega g(theta) int ds exp(-Sigma_h s)
+  = (1/4pi Sigma_h) int dOmega cos^n(theta) [e^{-Sigma_h s1} - e^{-Sigma_h s2}]
+```
+
+Every direction contributes the attenuated **chord** the ray cuts through the
+source, between entry `s1` and exit `s2`. The `s` integral is closed form, only a
+2D angular quadrature remains, and nothing diverges — a nearby source element
+subtends a correspondingly small solid angle. Ray-cylinder roots are
+
+```
+s_pm = [ rho cos(phi) +- sqrt(R^2 - rho^2 sin^2(phi)) ] / sin(theta)
+```
+
+intersected with the axial window `[(z-P)/mu, z/mu]`, and empty when the ray
+misses the cylinder. At `Sigma_h = 0` the bracket is `0/0`; the removable limit
+is the unattenuated chord `s2 - s1`.
+
+The angular quadrature is **adapted per field point** — the source subtends a
+narrow cone once the field point is far downstream, and a narrow azimuthal wedge
+once `rho > R`, so a fixed grid puts nearly all its nodes where the integrand
+vanishes. A fixed grid was 2.6x off at `z = 30`.
+
+#### The angular lobe is parametrized by its mean angle, not by `n`
+
+`g(theta) = cos^n(theta)` has width `~ n^{-1/2}`, so `d(width)/dn -> 0`: `n` is
+badly conditioned as a fit parameter, and an optimizer that wants a forward peak
+runs it to infinity with nothing to rail against. The table axis is therefore the
+**mean emission angle** `theta_bar`, via the exact relation
+
+```
+<cos theta> = (n+1)/(n+2)    ->    n = (2 cos theta_bar - 1) / (1 - cos theta_bar)
+```
+
+`theta_bar = 60 deg` is `n = 0`, the flattest lobe the family allows, and
+`theta_bar -> 0` is the forward delta — so the whole family maps onto a
+**bounded** interval and a forward-peaked solution reports a finite edge value.
+Measured shape sensitivity (RMS over the field, amplitude divided out):
+
+| | n = 3 | n = 20 | n = 80 |
+|---|---|---|---|
+| per `+1` in `n` | 11.9 % | 4.3 % | 1.5 % |
+| per `-2 deg` in `theta_bar` | 7.1 % | 20.7 % | 41.1 % |
+
+In `n` the gradient decays toward zero at the narrow end — flat gradient, large
+steps, runaway. In `theta_bar` it grows, so the optimizer always feels the wall.
+
+`cascade_coupled(P, Sigma_h, n_ang, z, r)` still takes the exponent and converts
+internally, so **existing parameter files read unchanged**; `cascade_coupled_theta`
+is the entry point for new fits.
+
+**Proton — `fitting_params/proton_coupled_single.csv`** (production set)
+
+Fitted on a **single** primary energy (100 MeV) with `E_pk = 4 MeV` held, then
+scored on all 50. Entry point `spectral_energy_fluence_single`, 19 parameters:
+
+| | | | |
+|---|---|---|---|
+| `A1` | 0.0284561 | `A2` | 0.00159186 |
+| `gamma1` | 0.743339 | `gamma2` | 0.904449 |
+| `Sigma_h` | 0.0217669 | `d2` | -0.190574 |
+| `n_ang` | 3.08683 | `kappa_ev` | 0.308278 |
+| `d1` | -0.317853 | `Epk` | 0.004 *(held)* |
+| `a` | 0.515959 | `A3` | 6.37809e-06 |
+| `w_c` | 0.349239 | `gamma3` | 0.949367 |
+| `E_th` | 102.174 | `A4` | 426.906 |
+| `n` | 2.19805 | `gamma4` | 1.08848 |
+| | | `kappa` | 0.185082 |
+
+Every value is physical: `Sigma_h = 0.0218` cm^-1 is a 45.9 cm removal length,
+`kappa_ev = 0.308` a 3.2 cm evaporation diffusion length, `kappa = 0.185` a
+migration length `M = sqrt(2)/kappa = 7.6 cm`, and `n_ang = 3.09` a mean emission
+angle of **36.5 deg** — a real forward lobe with a surviving wide-angle halo.
+
+**Which grid.** This set was fitted against the cascade table as it stood then:
+angular axis uniform in `n` (`linspace(0,8,17)` plus `9,10,12,14,17,20`), uniform
+160-node `mu` quadrature. It is now evaluated against the current table —
+`theta_bar` 6-60 deg in 55 nodes, clustered 200-node `mu` — which shifts the
+kernel by **0.06-0.37 % mean, 2.6-4.2 % max**. The parameters have **not** been
+refitted since; they are the pre-recast optimum read through the current table.
+
+**Carbon — `fitting_params/carbon_coupled_theta_10E.csv`**
+
+Fitted on **10 primary energies** (100-425 MeV/u, 805,000 points, 17 free) with
+the saturation prefactor, `Sigma_h` held at 0 and `E_pk` held at 4 MeV. Entry
+point `spectral_energy_fluence_single_theta`, 19 parameters — the file carries
+the two held values so it unpacks positionally like the others.
+
+| | | | |
+|---|---|---|---|
+| `A1` | 3.21777 | `A2` | 0.00968274 |
+| `gamma1` | 0.903585 | `gamma2` | 1.29622 |
+| `Sigma_h` | 0 *(held)* | `d2` | -0.642482 |
+| `theta_bar` | 16.3077 deg | `kappa_ev` | 0.180540 |
+| `d1` | -0.0505519 | `Epk` | 0.004 *(held)* |
+| `a` | 0.952823 | `A3` | 4.07916e-06 |
+| `w_c` | 0.195026 | `gamma3` | 9.0 *(railed)* |
+| `E_th` | 194.889 | `A4` | 2498.63 |
+| `n` | 0.963881 | `gamma4` | 1.78558 |
+| | | `kappa` | 0.126472 |
+
+**`E_th` at 200 rather than 2000 is what made the transport constants
+physical.** The earlier carbon prefactor sat at `E_th` = 2003 MeV/u, which puts
+the whole species at `E0/E_th` = 0.05-0.21 — the foot of the saturation curve,
+where `1 - exp(-x) ~ x` and the law is indistinguishable from a weak power law
+(the fitted `n` = 0.379 spans a factor 1.55 over the entire range). Starting at
+200 moves the range to 0.50-2.12, across the knee, the same region the protons
+occupy. The fit then keeps it (194.9), and with the prefactor carrying the `E0`
+dependence the diffusion constants stop having to:
+
+| | single energy, `E_th` = 2003 | 10 energies, `E_th` = 195 |
+|---|---|---|
+| `kappa` | 0.00847 (`M` = 167 cm) | **0.1265** (`M` = 11.2 cm) |
+| `kappa_ev` | 0.0745 (`L_ev` = 13.5 cm) | **0.1805** (`L_ev` = 5.5 cm) |
+
+Both are now sane for a 45 cm phantom. `theta_bar` moves by **0.02 deg** between
+the single-energy fit and the 10-energy fit, so the angular lobe is a genuine
+transport constant rather than a per-energy adjustment.
+
+`gamma3` rails at 9, but that is a near-flat direction rather than a wall: `P` is
+clipped at `L`, and at `gamma3` = 9 the epithermal source already fills the 45 cm
+phantom for 9 of the 10 fitted energies. Known open item, see below.
+
+*Superseded single-energy exploration (300 MeV/u), kept for the record.* All four
+variants scored on the *same* (current) table, so the costs are comparable:
+
+| variant | cost | `theta_bar` | `n` | `E_pk` | `kappa_ev` | `L_ev` | `A1` | `Sigma_h` |
+|---|---|---|---|---|---|---|---|---|
+| old `n` axis, `E_pk` free | 0.27976 | 17.34 deg *(railed)* | 20.0 | 499.9 MeV | 0.380 | 2.6 cm | 4.72 | 2e-4 floor |
+| old `n` axis, `E_pk` = 4 MeV | 0.28854 | 17.34 deg *(railed)* | 20.0 | 4 MeV | 0.082 | 12.2 cm | 5.67 | 2e-4 floor |
+| new `theta_bar`, `E_pk` free | **0.24076** | 13.28 deg | 35.4 | 486.0 MeV | 0.126 | 7.9 cm | 7.48 | 2e-4 floor |
+| new `theta_bar`, `E_pk` = 4 MeV | 0.28575 | 16.28 deg | 22.9 | 4 MeV | 0.074 | 13.5 cm | 6.26 | 2e-4 floor |
+| ... with `Sigma_h` free to 0 | 0.28538 | 16.29 deg | 22.9 | 4 MeV | 0.075 | 13.4 cm | 6.25 | **0** |
+
+*proton production set for reference: `theta_bar` 36.5 deg, `E_pk` 4 MeV,
+`kappa_ev` 0.308 (`L_ev` 3.2 cm), `A1` 0.0285.*
+
+The recast does what it was for: **the angular parameter no longer rails**, in
+either `E_pk` condition. With `E_pk` free it settles at an interior 13.3 deg
+where the old axis pinned it at the grid edge, and the cost falls 14 %. With
+`E_pk` held the cost edge is only ~1 %, because the old rail at `n = 20` already
+sat close to the optimum. Both `E_pk` = 4 MeV starts converge to the same point
+to 6 significant figures from very different initial values, so it is the global
+optimum of this parametrization, not a local one.
+
+Two findings from that exploration carried into the production fit, and
+**neither is about the angular parametrization**:
+
+- `Sigma_h` goes to **zero**. Earlier fits bounded it at `2e-4` because the
+  `Sigma_h = 0` slab of the table was NaN; with that fixed and the bound dropped
+  to a true zero, the fit returns `3e-41` and a marginally *better* cost. So at
+  300 MeV/u the coupled kernel degenerates to pure geometry — `1/(4 pi s^2)`
+  dilution with a `cos^23` lobe and no attenuation whatever over 45 cm. The
+  proton, by contrast, sits at a well-identified `Sigma_h = 0.0218` (45.9 cm)
+  with a much wider 36.5 deg lobe.
+- The fourth regime insists on being a **broad halo** whichever knob is left
+  open. Free `E_pk` buys a hard-spectrum halo (486 MeV peak); holding `E_pk` at
+  the physical 4 MeV keeps the spectrum right but drives `kappa_ev` to 0.074, a
+  13.5 cm diffusion length against the proton's 3.2 cm. The old `n` axis showed
+  the same thing (0.082, 12.2 cm), so this predates the recast.
+
+`A1` is also ~110x the proton amplitude.
 
 #### Why it exists
 
@@ -180,6 +351,40 @@ Three quantities that all look like attenuation coefficients and are not the sam
 Forcing `Sigma_h = Sigma_t` costs a factor four in residual (84 % vs 20 %), so
 the distinction is measurable and not a fitting artifact.
 
+#### Table accuracy
+
+Against the direct integral, over the field for the proton set:
+
+| `P` | mean | max |
+|---|---|---|
+| 5 cm | 2.4 % | 21.7 % |
+| 15 cm | 0.9 % | 7.4 % |
+| 30 cm | 0.5 % | 7.4 % |
+
+Those maxima are **confined to the dim tail** and the means are what matter.
+Stratifying by brightness (`theta_bar` = 16.3 deg, `P` = 15 cm, the carbon case):
+
+| `F / F_max` | points | mean | max |
+|---|---|---|---|
+| 1e-4 - 1e-3 | 7 | 17.0 % | 39.3 % |
+| 1e-3 - 1e-2 | 15 | 4.8 % | 16.3 % |
+| 1e-2 - 1e-1 | 189 | 0.13 % | 3.4 % |
+| 1e-1 - 1 | 70 | 0.17 % | 0.66 % |
+
+So the table is accurate wherever the field actually is, and the large *relative*
+errors sit four decades below peak where they carry no weight in a least-squares
+fit or in Eq. 10. Quote the stratified figures, not the bare max.
+
+Isolating axes by snapping one coordinate at a time to its nearest node, the
+residual is `xi` and `P_hat` — never `Sigma_h` or `theta_bar`. It concentrates at
+the **kink just past the source end** and in the far upstream tail, where a
+narrow lobe makes the kernel vary violently with `z` (at `theta_bar` = 16 deg a
+point at `z` = 2.8, `rho` = 2.5 needs ~42 deg emission, far outside the lobe).
+It decays with range, so it is worst at short ranges — i.e. at **low primary
+energies**, which is also where the reported `dK` is worst. Refining
+`P_HAT_GRID_C` and `XI_GRID_C` near the source end is the obvious next move and
+has not been done.
+
 ---
 
 ## Performance
@@ -190,18 +395,60 @@ Volume-weighted bias (Eq. 10), all 50 primary energies, full `rho <= 5.5 cm`:
 |---|---|---|---|---|
 | **Option 1** carbon, `prefac1` | 7.2 % | 3.8 % | 9.1 % | 0/50 |
 | **Option 1** proton, `prefac2` escalated | 4.6 % | 6.4 % | 33.0 % | 0/50 |
-| **Option 2** proton, coupled cascade | 15.7 % | 19.1 % | 73.3 % | 2/50 |
+| **Option 2** proton, `proton_coupled_single.csv` | **10.3 %** | **2.8 %** | 29.9 % | 0/50 |
+| **Option 2** carbon, `carbon_coupled_theta_10E.csv` | **11.2 %** | **8.2 %** | 14.8 % | 0/50 |
 
-Option 2's larger number is expected: it was fitted on one primary energy with
-`E_th`/`n` frozen, so 49 of the 50 are out of sample and the low-energy end is
-unconstrained (+73 % at 54 MeV). Its distinguishing property is that the bias is
-**flat in radius** — 16.0 % at 3.5 cm against 15.7 % at 5.5 cm — where every
-factorized variant degrades sharply outward (23.7 % -> 42.9 %).
+Carbon's Option 2 numbers are the flattest of the four in `dPhi` (max 14.8 %
+against the proton's 29.9 %), but both curves are smooth and almost entirely
+**negative**, -3 % to -15 %. That is a structural under-prediction, not scatter.
+Band-by-band AM/MC at 299 MeV/u locates it:
 
-Note that the fitting objective (unweighted least squares on raw fluence) is not
-the reported metric (rho-weighted, z- and E-integrated bias). The two do not
-always rank parameter sets the same way; several transport constants shift
-noticeably depending on which is minimized.
+| band | rho=0.1 | rho=1.5 | rho=3.5 | rho=5.5 |
+|---|---|---|---|---|
+| 25 meV | 0.98 | 1.00 | 0.95 | 0.96 |
+| **1 eV** | **0.17** | **0.24** | **0.20** | **0.21** |
+| 100 keV | 1.96 | 1.70 | 1.58 | 1.16 |
+| 1 MeV | 1.04 | 1.30 | 1.19 | 1.05 |
+| **30 MeV** | 0.78 | 0.75 | 0.83 | **0.56** |
+
+Thermal is excellent. Epithermal is **4-6x low everywhere** — that is the
+`gamma3` rail, with `A3` having dropped 8x alongside it. And 30 MeV still falls
+off too fast laterally (0.78 on axis, 0.56 at `rho` = 5.5), so the halo is short
+at large radius even with the coupled kernel.
+
+The fitted and unfitted energies lie on the same smooth curve with no visible
+gap, so this is systematic, not overfitting.
+
+Option 2's proton set, measured on the current table: `dPhi` mean 10.26 %,
+median 5.25 %, max 29.86 % at 70 MeV; `dK` mean 2.76 %, median 2.10 %, max
+20.32 % at 54 MeV. These are the same to the quoted precision as the values
+measured before the table was rebuilt on the `theta_bar` axis — the kernel moved
+0.06-0.37 %, the integrated metric did not move.
+
+That it was fitted on a **single** primary energy with `E_th`/`n` frozen makes
+49 of the 50 out of sample. Its distinguishing property is that the bias is
+**flat in radius**, where every factorized variant degrades sharply outward
+(23.7 % -> 42.9 %).
+
+`dK` is worst at the low-energy end (+20 % at 54 MeV, +10 % at 60 MeV, then ~4 %
+everywhere else). That is also where the cascade table is least accurate — the
+`P_hat`/`xi` grids near the source end, see *Table accuracy* — so the two may be
+related, but that has not been demonstrated.
+
+**Eq. 10 uses differential fluence.** The npy `mc` holds `E dPhi/dE`, so
+`phi = mc / en_low` and the integration weights are `dE/en` and `dE kc/en`.
+Using `dE` and `dE kc` carries a spurious factor of `E`; it changes the band
+shares badly (evaporation 8.6 % -> 42.1 % of kerma). `toolbox/metrics/
+bias_curves.py` still contains the uncorrected weights and is Option 1-only.
+
+Note that the fitting objective (unweighted least squares on **energy** fluence,
+~88 % cascade) is not the reported metric (`rho`-weighted, `z`- and
+`E`-integrated bias on **particle** fluence, ~38 % slow, and on kerma, ~0 %
+slow). The two do not rank parameter sets the same way — several transport
+constants shift noticeably depending on which is minimized, and sets with
+*fewer* refitted parameters have repeatedly scored better on the reported
+metric. This mismatch is deliberate on the fitting side and worth keeping in
+mind when comparing rows above.
 
 ---
 
@@ -224,29 +471,56 @@ interpolated at evaluation time.
 
 ```
 python -m toolbox.diffusion_integrals.precompute_kernels     # ~6 min, both species
-python -m toolbox.diffusion_integrals.precompute_cascade     # ~4 min, Option 2 only
+python -m toolbox.diffusion_integrals.precompute_slow        # ~2 min, uniform source
+python -m toolbox.diffusion_integrals.precompute_slow --sq   # ~2 min, single kappa
+python -m toolbox.diffusion_integrals.precompute_cascade     # ~20 min, Option 2 only
 ```
 
 `evap_dim.dat` and `therm_dim_{proton,carbon}.dat` are tracked. The coupled
-cascade table `cascade_dim.dat` is **not** — at 68 MB it would bloat the history,
-and it regenerates from the command above.
+cascade table `cascade_dim.dat` is **not** — at 306 MB it would bloat the
+history, and it regenerates from the command above. Its axes are
+`(P_hat, Sigma_h, theta_bar, xi, rho_hat)` = `(31, 16, 55, 46, 61)`.
 
-The slow-neutron table is species-specific because its source is the cascade
-axial profile, which depends on that species' `Sigma_t`.
+Note that the tables are part of the model: rebuilding one changes results at
+unchanged parameters. `toolbox/metrics/bias_curves.py` therefore keys its cache
+on the `.dat` files' size and mtime as well as on the parameter values.
 
-### Two-group slow neutrons
+### Slow neutrons
 
-The epithermal and thermal regimes share one two-group kernel. The two-group
-result follows from the tabulated one-group kernel by
+**One source volume, different transport.** The slow-neutron table
+(`precompute_slow.py`) puts the epithermal and thermal regimes over the *same*
+uniform cylinder used by the cascade and evaporation regimes, rather than over
+the cascade axial profile. The regimes then differ only in how neutrons are
+transported out of a common source volume, and the table becomes
+**species-independent** — it no longer references `Sigma_t`, so one file serves
+both. Fitting `gamma` absorbs the difference: a uniform column must be longer to
+cover the same axial extent as a profile with an exponential tail, so the fitted
+`gamma` comes out larger.
+
+**Two groups, one diffusion length.** The two-group result follows from the
+tabulated one-group kernel by
 
 ```
 F_2(kappa_f, kappa_s) = [F_1(kappa_f) - F_1(kappa_s)] / (kappa_s^2 - kappa_f^2)
 ```
 
-since `kappa_s^2 - kappa_f^2` carries no k dependence and the Hankel integral is
-linear — so `kappa_f` costs no table dimension. Both kappas are held fixed
-(0.150 and 0.128 cm^-1): in a 45 cm phantom the Dirichlet boundary supplies the
-observed decay, leaving `kappa` weakly identifiable on its own.
+exactly, including the Dirichlet boundaries — the Helmholtz operator is diagonal
+in the `sin(m pi z / L)` basis, so the partial fraction runs in a `k`-independent
+denominator mode by mode. So `kappa_f` costs no table dimension.
+
+Collapsing `kappa_f = kappa_s = kappa` eliminates the fast group and leaves
+
+```
+(grad^2 - kappa^2)^2 phi = const * S
+```
+
+whose propagator is `1/(k^2+kappa^2)^2 = -(1/2 kappa) d/dkappa [1/(k^2+kappa^2)]`.
+In free space this is `e^{-kappa r} / (8 pi kappa)` — **the `1/r` cancels**, which
+is exactly why the two-group kernel is flat near the source and broad enough to
+match the MC where a single Yukawa is not. The migration length is
+`M = sqrt(2)/kappa`. `slow_sq_dim.dat` tabulates it directly, so it is one lookup
+rather than a difference of two: no removable singularity, no cancellation. This
+collapse costs nothing measurable and removes a parameter.
 
 ## Primary range tables
 
@@ -265,13 +539,21 @@ FLUKA errors to absolute.
 
 ## Open items
 
-- Option 2 is tested on protons only, and on a single primary energy. The natural
-  next step is a 10-energy fit with `E_th`/`n` free, then carbon.
+- **`gamma3` rails at 9 in the carbon set and epithermal comes out 4-6x low.**
+  The two are the same problem: the 1 eV band is ~0 % of the *energy* fluence the
+  objective minimizes, so `A3`/`gamma3` are effectively unconstrained by the fit
+  and drifted, while Eq. 10 grades *particle* fluence where thermal+epithermal is
+  13 %. Cheapest fix is a targeted refit of `A3`/`gamma3` against the 1 eV band;
+  the principled one is reweighting the objective by `1/E`. Neither is done.
+- Option 2's proton set is fitted on a single primary energy. The natural next
+  step is a 10-energy fit with `E_th`/`n` free, as was done for carbon.
 - Option 1's proton set requires renaming the fourth regime; "evaporation" with
   `E_pk = 500 MeV` is not defensible as written.
-- Under Option 2 the slow-neutron table still uses the Option 1 `Sigma_t` as its
-  cascade source shape. That regime contributes ~0 % of the energy fluence so
-  results are unaffected, but the two are formally inconsistent.
-- `n_ang` is held global. It should rise with neutron energy (higher-energy
+- `theta_bar` is held global. It should shrink with neutron energy (higher-energy
   cascade neutrons are more forward-peaked); the equivalent factorized
   parameterization measured `Sigma_h ~ En^0.36`.
+- Cascade table accuracy near the source end is limited by the `P_hat` and `xi`
+  grids, not by the angular or `Sigma_h` axes — see *Table accuracy* above.
+- The Eq. 10 volume weighting uses `rho` rather than `pi(rho_j^2 - rho_{j-1}^2)
+  dz`. The innermost bin is 2x off; the effect on the reported `dPhi` is 0.19 pp.
+  It should be corrected before the metric goes in the paper.

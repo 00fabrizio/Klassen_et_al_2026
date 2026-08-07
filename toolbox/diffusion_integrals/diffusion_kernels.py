@@ -107,27 +107,30 @@ def thermal_diff(P, kappa_f, kappa_s, z, r, species='proton'):
 # coupled ballistic cascade kernel (replaces cascade_lateral x cascade)
 # ----------------------------------------------------------------------
 from .precompute_cascade import (                                  # noqa: E402
-    P_HAT_GRID_C, SIGMA_H_GRID, N_ANG_GRID, XI_GRID_C, RHO_GRID_C,
-    NP_C, NS_C, NN_C, NZ_C, NR_C, cascade_path,
+    P_HAT_GRID_C, SIGMA_H_GRID, THETA_GRID_C, N_ANG_GRID, XI_GRID_C, RHO_GRID_C,
+    NP_C, NS_C, NN_C, NZ_C, NR_C, cascade_path, theta_to_n, n_to_theta,
 )
 
 cascade_dim = np.memmap(cascade_path, dtype="float32", mode="r",
                         shape=(NP_C, NS_C, NN_C, NZ_C, NR_C))
 _cascade_interp = RegularGridInterpolator(
-    (P_HAT_GRID_C, SIGMA_H_GRID, N_ANG_GRID, XI_GRID_C, RHO_GRID_C),
+    (P_HAT_GRID_C, SIGMA_H_GRID, THETA_GRID_C, XI_GRID_C, RHO_GRID_C),
     cascade_dim, bounds_error=False, fill_value=None,   # clamp, never zero out
 )
 
 
-def cascade_coupled(P, Sigma_h, n_ang, z, r):
-    """Coupled first-flight cascade kernel: spatial factor for (P, Sigma_h, n_ang).
+def cascade_coupled_theta(P, Sigma_h, theta_bar, z, r):
+    """Coupled first-flight cascade kernel, angular lobe set by its mean angle.
 
-    Supersedes cascade_lateral(r) * cascade(z), which could not reproduce the
-    rho-dependent shift of the axial peak.
+    theta_bar is the mean emission angle in degrees, bounded to (0, 60]: 60 deg
+    is n = 0 and theta_bar -> 0 is the forward delta. This is the axis the table
+    is built on and the variable to FIT in -- sensitivity is uniform along it,
+    whereas the equivalent exponent runs to infinity for a bounded change in
+    lobe width. See precompute_cascade for the derivation.
     """
     P = np.asarray(P, dtype=float)
     Sigma_h = np.asarray(Sigma_h, dtype=float)
-    n_ang = np.asarray(n_ang, dtype=float)
+    theta_bar = np.asarray(theta_bar, dtype=float)
     z = np.asarray(z, dtype=float)
     r = np.asarray(r, dtype=float)
 
@@ -135,10 +138,22 @@ def cascade_coupled(P, Sigma_h, n_ang, z, r):
     xi = np.clip(z / L_KERNEL, 0.0, 1.0)
     rho = np.clip(r / R_KERNEL, RHO_GRID_C[0], RHO_GRID_C[-1])
     s_c = np.clip(Sigma_h, SIGMA_H_GRID[0], SIGMA_H_GRID[-1])
-    n_c = np.clip(n_ang, N_ANG_GRID[0], N_ANG_GRID[-1])
+    t_c = np.clip(theta_bar, THETA_GRID_C[0], THETA_GRID_C[-1])
 
-    A, B, C, D, E = np.broadcast_arrays(P_hat, s_c, n_c, xi, rho)
+    A, B, C, D, E = np.broadcast_arrays(P_hat, s_c, t_c, xi, rho)
     return np.maximum(_cascade_interp(np.stack([A, B, C, D, E], axis=-1)), 0.0)
+
+
+def cascade_coupled(P, Sigma_h, n_ang, z, r):
+    """Coupled first-flight cascade kernel, angular lobe set by the exponent n.
+
+    Supersedes cascade_lateral(r) * cascade(z), which could not reproduce the
+    rho-dependent shift of the axial peak. Kept in exponent form so the fitted
+    parameter sets in fitting_params/ read unchanged; it converts to the
+    tabulated mean-angle axis via <cos theta> = (n+1)/(n+2). New fits should use
+    cascade_coupled_theta -- n is the ill-conditioned coordinate.
+    """
+    return cascade_coupled_theta(P, Sigma_h, n_to_theta(n_ang), z, r)
 
 
 # ----------------------------------------------------------------------

@@ -5,6 +5,7 @@ per primary energy, so each energy is an independent job. The model evaluation
 is ~99 % of the cost and is single-threaded, so spreading the energies over
 processes is close to a linear speedup.
 """
+import glob
 import hashlib
 import os
 from concurrent.futures import ProcessPoolExecutor
@@ -56,15 +57,23 @@ def bias_curves(species, param_file=None, nr=55, workers=None, cache=True):
     """Return (Ep, delta_Phi, delta_K) in percent for every primary energy.
 
     Results are cached under npy_data/.bias_cache, keyed by the parameter
-    values and nr, so re-running with unchanged parameters is instant.
+    values, nr, AND the identity of the kernel tables. The tables are part of
+    the model: rebuilding one changes the curves at unchanged parameters, so
+    keying on parameters alone would serve pre-rebuild results silently.
     """
     param_file = param_file or f'{_ROOT}/fitting_params/{species}_prefac2_twogroup.csv'
     par = pd.read_csv(param_file, index_col=0).loc['opt params']
     vals = [float(par[c]) for c in COLS]
     Ep_all = np.load(f'{_ROOT}/npy_data/{species}_energies.npy')
 
+    tabs = []
+    for f in sorted(glob.glob(os.path.join(_ROOT, 'toolbox', 'diffusion_integrals', '*.dat'))):
+        st = os.stat(f)
+        tabs.append(f'{os.path.basename(f)}:{st.st_size}:{st.st_mtime_ns}')
+
     key = hashlib.md5(
-        f'{species}|{nr}|{"|".join(repr(v) for v in vals)}'.encode()).hexdigest()[:16]
+        f'{species}|{nr}|{"|".join(repr(v) for v in vals)}|{"|".join(tabs)}'
+        .encode()).hexdigest()[:16]
     path = os.path.join(_CACHE, f'{species}_{key}.npz')
     if cache and os.path.exists(path):
         d = np.load(path)

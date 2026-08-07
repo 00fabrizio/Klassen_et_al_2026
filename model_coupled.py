@@ -32,7 +32,9 @@ Fitted values: fitting_params/proton_coupled.csv (see README).
 import numpy as np
 
 from model import Model
-from toolbox.diffusion_integrals.diffusion_kernels import cascade_coupled, slow_diff_single
+from toolbox.diffusion_integrals.diffusion_kernels import (
+    cascade_coupled, cascade_coupled_theta, slow_diff_single,
+)
 from toolbox.spectral_funcs import cascade_spectrum, epithermal_spectrum, thermal_spectrum
 
 
@@ -128,6 +130,58 @@ class CoupledModel(Model):
         (Z, R, E, EP) = X
         return self.prefac1(EP, xi) * (
               self.cas(X, A1, gamma1, Sigma_h, n_ang, d1, a, w_c)
+            + self.ev( X, A2, gamma2, d2, kappa_ev, Epk)
+            + self.ep_single(X, A3, gamma3, kappa)
+            + self.th_single(X, A4, gamma4, kappa)
+        )
+
+    # ------------------------------------------------------------------
+    # cascade parametrized by the mean emission angle
+    # ------------------------------------------------------------------
+    def cas_theta(self, X, A, gamma, Sigma_h, theta_bar, alpha, a, w_c):
+        """Cascade regime with the angular lobe set by its mean angle in degrees.
+
+        Same kernel as `cas`; only the angular coordinate differs. theta_bar is
+        bounded to (0, 60] by the cos^n family itself -- 60 deg is n = 0 and
+        0 deg is the forward delta -- so a fit that wants a forward peak reports
+        a finite edge value instead of running the exponent to infinity. Bound
+        it to the table's [6, 60] when fitting.
+        """
+        (Z, R, E, EP) = X
+        P = gamma * self.XT[self.iEp, self.iEn]
+        t_c = a * EP / 1000
+        return cascade_coupled_theta(P, Sigma_h, theta_bar, Z, R) \
+            * cascade_spectrum(E, A, alpha=alpha, t_c=t_c, w_c=w_c)
+
+    def spectral_energy_fluence_single_theta(self, X,
+                                             A1, gamma1, Sigma_h, theta_bar, d1, a, w_c,
+                                             A2, gamma2, d2, kappa_ev, Epk,
+                                             A3, gamma3, A4, gamma4,
+                                             kappa,
+                                             E_th, n):
+        """As spectral_energy_fluence_single, with theta_bar in place of n_ang.
+
+        19 parameters, same order and length, so the same fitting code drives
+        both; only the bounds on slot 3 change (degrees, not an exponent).
+        """
+        (Z, R, E, EP) = X
+        return self.prefac2(EP, E_th, n) * (
+              self.cas_theta(X, A1, gamma1, Sigma_h, theta_bar, d1, a, w_c)
+            + self.ev( X, A2, gamma2, d2, kappa_ev, Epk)
+            + self.ep_single(X, A3, gamma3, kappa)
+            + self.th_single(X, A4, gamma4, kappa)
+        )
+
+    def spectral_energy_fluence_single_theta_prefac1(self, X,
+                                                     xi,
+                                                     A1, gamma1, Sigma_h, theta_bar, d1, a, w_c,
+                                                     A2, gamma2, d2, kappa_ev, Epk,
+                                                     A3, gamma3, A4, gamma4,
+                                                     kappa):
+        """Power-law prefactor, mean-angle cascade, single-kappa slow. 18 params."""
+        (Z, R, E, EP) = X
+        return self.prefac1(EP, xi) * (
+              self.cas_theta(X, A1, gamma1, Sigma_h, theta_bar, d1, a, w_c)
             + self.ev( X, A2, gamma2, d2, kappa_ev, Epk)
             + self.ep_single(X, A3, gamma3, kappa)
             + self.th_single(X, A4, gamma4, kappa)
