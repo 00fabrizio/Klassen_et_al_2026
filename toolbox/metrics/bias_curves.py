@@ -32,8 +32,8 @@ COLS = ['A1', 'gamma1', 'Sigma', 'ang', 'd1', 'a', 'w_c',
         'A3', 'gamma3', 'A4', 'gamma4', 'kappa_slow', 'E_th', 'n']
 
 DEFAULT_PARAMS = {
-    'proton': 'proton_coupled_single.csv',
-    'carbon': 'carbon_coupled_theta_10E.csv',
+    'proton': 'params_proton.csv',
+    'carbon': 'params_carbon.csv',
 }
 
 _ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))

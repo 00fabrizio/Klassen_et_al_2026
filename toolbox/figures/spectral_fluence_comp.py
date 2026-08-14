@@ -60,13 +60,13 @@ nz, nr, nE = len(z), len(rho), len(en)
 
 SPEC = {
     'proton': dict(
-        csv='proton_coupled_single.csv', entry='single',
+        csv='params_proton.csv', entry='single',
         E=np.load(f'{ROOT}/npy_data/proton_energies.npy'),
         En=[(46, 'meV'), (77, 'eV'), (199, 'MeV'), (227, 'MeV')],
         idx=EP_IDX_P,
         label=r'$^{1}\mathrm{H}$', unit='MeV'),
     'carbon': dict(
-        csv='carbon_coupled_theta_10E.csv', entry='theta',
+        csv='params_carbon.csv', entry='theta',
         E=np.load(f'{ROOT}/npy_data/carbon_energies.npy'),
         En=[(46, 'meV'), (77, 'eV'), (199, 'MeV'), (227, 'MeV')],
         idx=EP_IDX_C,

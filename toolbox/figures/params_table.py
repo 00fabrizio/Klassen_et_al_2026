@@ -54,9 +54,9 @@ def sig3(v):
     return f'${s}$'
 
 
-P = pd.read_csv(f'{ROOT}/fitting_params/proton_coupled_single.csv',
+P = pd.read_csv(f'{ROOT}/fitting_params/params_proton.csv',
                 index_col=0).loc['opt params'].astype(float)
-C = pd.read_csv(f'{ROOT}/fitting_params/carbon_coupled_theta_10E.csv',
+C = pd.read_csv(f'{ROOT}/fitting_params/params_carbon.csv',
                 index_col=0).loc['opt params'].astype(float)
 
 p = {k: float(v) for k, v in P.items()}

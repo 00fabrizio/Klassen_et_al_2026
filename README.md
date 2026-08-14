@@ -55,14 +55,14 @@ Both take 19 parameters in the same order, so one fitting routine drives both:
 
 | entry point | angular slot | used by |
 |---|---|---|
-| `spectral_energy_fluence` | `n_ang`, the exponent | `proton_coupled_single.csv` |
-| `spectral_energy_fluence_theta` | `theta_bar`, degrees | `carbon_coupled_theta_10E.csv` |
+| `spectral_energy_fluence` | `n_ang`, the exponent | `params_proton.csv` |
+| `spectral_energy_fluence_theta` | `theta_bar`, degrees | `params_carbon.csv` |
 
 ```python
 import pandas as pd
 from model import Model
 
-p = pd.read_csv('fitting_params/carbon_coupled_theta_10E.csv', index_col=0)
+p = pd.read_csv('fitting_params/params_carbon.csv', index_col=0)
 M = Model(species='carbon', XT=XT, iEp=iEp, iEn=iEn)
 phi = M.spectral_energy_fluence_theta((Z, R, En, EP), *p.loc['opt params'])
 ```
@@ -223,7 +223,7 @@ nothing measurable and removes a parameter.
 
 Generated into `tables/params.tex` by `toolbox/figures/params_table.py`.
 
-### Proton — `fitting_params/proton_coupled_single.csv`
+### Proton — `fitting_params/params_proton.csv`
 
 Fitted on a **single** primary energy (100 MeV) with `E_pk = 4 MeV` held, then
 scored on all 50.
@@ -246,7 +246,7 @@ Every value is physical: `Sigma = 0.0218` cm^-1 is a 45.9 cm removal length,
 migration length of 7.6 cm, and `n_ang = 3.09` a mean emission angle of
 **36.5 deg** — a real forward lobe with a surviving wide-angle halo.
 
-### Carbon — `fitting_params/carbon_coupled_theta_10E.csv`
+### Carbon — `fitting_params/params_carbon.csv`
 
 Fitted on **10 primary energies** (100-425 MeV/u, 805,000 points, 17 free) with
 `Sigma` held at 0 and `E_pk` held at 4 MeV.

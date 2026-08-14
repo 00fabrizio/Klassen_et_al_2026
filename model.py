@@ -51,9 +51,9 @@ the "fraction of primaries that interact before stopping" law: substituting the
 Bragg-Kleeman range R ~ E0^p into 1 - exp(-Sigma_inel R) gives exactly this form
 and predicts n ~ p. Both production sets use it.
 
-Fitted values live in fitting_params/{proton_coupled_single,
-carbon_coupled_theta_10E}.csv, with columns in the same order as the
-corresponding signature so they can be unpacked positionally.
+Fitted values live in fitting_params/params_{proton,carbon}.csv, with columns in
+the same order as the corresponding signature so they can be unpacked
+positionally.
 """
 import numpy as np
 
@@ -136,7 +136,7 @@ class Model:
                                 A3, gamma3, A4, gamma4,
                                 kappa_slow,
                                 E_th, n):
-        """Angular lobe as the exponent. Used by fitting_params/proton_*.csv."""
+        """Angular lobe as the exponent. Used by params_proton.csv."""
         (Z, R, E, EP) = X
         return self.prefac2(EP, E_th, n) * (
               self.cas(X, A1, gamma1, Sigma, n_ang, d1, a, w_c)
@@ -151,7 +151,7 @@ class Model:
                                       A3, gamma3, A4, gamma4,
                                       kappa_slow,
                                       E_th, n):
-        """Angular lobe as the mean angle. Used by fitting_params/carbon_*.csv.
+        """Angular lobe as the mean angle. Used by params_carbon.csv.
 
         Same order and length as `spectral_energy_fluence`, so one fitting
         routine drives both; only the bounds on slot 3 differ.
