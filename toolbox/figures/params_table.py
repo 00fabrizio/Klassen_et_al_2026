@@ -7,13 +7,14 @@ CSVs directly means the table cannot drift from the fits again.
 
 Symbols follow the manuscript, with two disambiguations:
 
-  Sigma_t   the cascade attenuation. The code calls this Sigma_h to distinguish
-            it from the factorized model's Sigma_t (0.346, which absorbed the
-            1/s^2 dilution) and from the true total cross section (~0.067). In
-            the manuscript only the coupled model appears and it uses the
-            first-flight kernel exp(-Sigma_t s)/4 pi s^2 of the theory section,
-            so one symbol serves -- but the fitted value is an EFFECTIVE removal
-            constant, well below sigma_tot, and the text says so.
+  Sigma     the cascade attenuation, unsubscripted. The code calls this Sigma_h
+            to distinguish it from the factorized model's Sigma_t (0.346, which
+            absorbed the 1/s^2 dilution) and from the true total cross section
+            (~0.067). The manuscript carries only the coupled model and uses one
+            unsubscripted Sigma throughout, introduced with the first-flight
+            kernel exp(-Sigma s)/4 pi s^2; the fitted value is an EFFECTIVE
+            removal constant well below sigma_tot, and the text says so.
+            Sigma_a (absorption) and Sigma_r (two-group removal) keep theirs.
 
   n_ang     the cascade angular exponent, cos^n_ang(theta). The manuscript uses
             a bare n for this AND for the prefactor sharpness; they are different
@@ -71,7 +72,7 @@ ROWS = [
     ('Cascade', [
         (r'$A_{\mathrm{cas}}$', r'$\mathrm{cm^{-2}\,GeV^{-1}}$', 'A1'),
         (r'$\gamma_{\mathrm{cas}}$', '--', 'gamma1'),
-        (r'$\Sigma_{\mathrm{t}}$', r'$\mathrm{cm^{-1}}$', 'Sigma_h'),
+        (r'$\Sigma$', r'$\mathrm{cm^{-1}}$', 'Sigma_h'),
         (r'$n_{\mathrm{ang}}$', '--', 'n_ang'),
         (r'$d_{\mathrm{cas}}$', '--', 'd1'),
         (r'$a_{\mathrm{cas}}$', '--', 'a'),
@@ -102,7 +103,7 @@ L = [
     r'(${}^{12}$C) beams. All values are given to three significant digits. '
     r'$\kappa_{\mathrm{slow}}$ is shared by the epithermal and thermal regimes. '
     r'$E_{\mathrm{pk}}$ was held at \qty{4}{MeV} for both species, and '
-    r'$\Sigma_{\mathrm{t}}$ was held at zero for carbon, the fit having driven '
+    r'$\Sigma$ was held at zero for carbon, the fit having driven '
     r'it there. $n_{\mathrm{ang}}$ is the exponent of the cascade emission lobe '
     r'$\cos^{n_{\mathrm{ang}}}\theta$, distinct from the prefactor sharpness '
     r'$n$.}',
