@@ -72,7 +72,7 @@ ROWS = [
     ('Cascade', [
         (r'$A_{\mathrm{cas}}$', r'$\mathrm{cm^{-2}\,GeV^{-1}}$', 'A1'),
         (r'$\gamma_{\mathrm{cas}}$', '--', 'gamma1'),
-        (r'$\Sigma$', r'$\mathrm{cm^{-1}}$', 'Sigma_h'),
+        (r'$\Sigma$', r'$\mathrm{cm^{-1}}$', 'Sigma'),
         (r'$n_{\mathrm{ang}}$', '--', 'n_ang'),
         (r'$d_{\mathrm{cas}}$', '--', 'd1'),
         (r'$a_{\mathrm{cas}}$', '--', 'a'),
@@ -92,7 +92,7 @@ ROWS = [
     ('Thermal', [
         (r'$A_{\mathrm{th}}$', r'$\mathrm{cm^{-2}\,GeV^{-2}}$', 'A4'),
         (r'$\gamma_{\mathrm{th}}$', '--', 'gamma4'),
-        (r'$\kappa_{\mathrm{slow}}$', r'$\mathrm{cm^{-1}}$', 'kappa'),
+        (r'$\kappa_{\mathrm{slow}}$', r'$\mathrm{cm^{-1}}$', 'kappa_slow'),
     ]),
 ]
 

@@ -6,7 +6,7 @@ Layout: two species side by side, four neutron energies as rows, MC | AM |
 across each row so the three panels are directly comparable.
 
 SUPERSEDES the equivalent cell in plots.ipynb, which reads {species}_model.npy.
-Those arrays were written by the factorized model (Option 1) and are stale;
+Those arrays were written by the superseded factorized model and are stale;
 model values here are computed from the current production parameter files.
 
 Choice of rows and primary energy
@@ -43,7 +43,7 @@ from matplotlib.colors import Normalize
 from matplotlib.ticker import FuncFormatter, MaxNLocator
 
 from toolbox.production_range import build_xt_table
-from model_coupled import CoupledModel
+from model import Model
 
 import os
 
@@ -79,14 +79,14 @@ def model_slice(sp):
     p = pd.read_csv(f'{ROOT}/fitting_params/{cfg["csv"]}',
                     index_col=0).loc['opt params'].astype(float)
     Ep = float(cfg['E'][cfg['idx']])
-    M = CoupledModel(species=sp,
+    M = Model(species=sp,
                      XT=build_xt_table(sp, np.array([Ep]), en),
                      iEp=np.repeat(np.arange(1), nz * nr * nE),
                      iEn=np.tile(np.arange(nE), nz * nr))
     EP, Z, R, En = [a.ravel() for a in
                     np.meshgrid([Ep], z, rho, en, indexing='ij')]
-    fn = (M.spectral_energy_fluence_single if cfg['entry'] == 'single'
-          else M.spectral_energy_fluence_single_theta)
+    fn = (M.spectral_energy_fluence if cfg['entry'] == 'single'
+          else M.spectral_energy_fluence_theta)
     return fn((Z, R, En, EP), *p).reshape(nz, nr, nE), Ep
 
 

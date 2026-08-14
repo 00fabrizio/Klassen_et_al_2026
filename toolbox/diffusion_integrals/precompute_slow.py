@@ -43,31 +43,6 @@ KAPPA_SLOW_GRID = np.linspace(0.0, 0.5, 60)
 NK_SLOW = len(KAPPA_SLOW_GRID)
 
 _here = os.path.dirname(os.path.abspath(__file__))
-slow_path = os.path.join(_here, "slow_dim.dat")
-
-
-def slow_kernel(P, kappa):
-    """One-group kernel over the uniform source, on (XI_GRID, RHO_GRID)."""
-    A = PK.axial_factor_thermal_bc(XI_GRID * L_KERNEL, P=P, L=L_KERNEL,
-                                   alpha=np.hypot(PK.k, kappa))
-    return PK._hankel_transform(RHO_GRID * R_KERNEL, R_KERNEL, A).T
-
-
-def main():
-    tab = np.memmap(slow_path, dtype="float32", mode="w+",
-                    shape=(NP, NK_SLOW, NZ, NR))
-    print(f"slow-neutron table: uniform source, {NP} x {NK_SLOW} x {NZ} x {NR}, "
-          f"kappa 0-{KAPPA_SLOW_GRID[-1]:g} in {NK_SLOW} nodes "
-          f"(spacing {np.diff(KAPPA_SLOW_GRID)[0]:.5f})")
-    for iP, P_hat in enumerate(P_HAT_GRID):
-        P = P_hat * L_KERNEL
-        for ik, kh in enumerate(KAPPA_SLOW_GRID):
-            tab[iP, ik] = slow_kernel(P, kh / R_KERNEL).astype(np.float32)
-        print(f"  P_hat = {P_hat:.3f}", flush=True)
-    tab.flush()
-    print(f"wrote {slow_path}  ({os.path.getsize(slow_path)/1e6:.1f} MB)")
-
-
 # ----------------------------------------------------------------------
 # single-diffusion-length (squared-propagator) variant
 # ----------------------------------------------------------------------
@@ -130,5 +105,4 @@ def main_sq():
 
 
 if __name__ == "__main__":
-    import sys
-    (main_sq if "--sq" in sys.argv else main)()
+    main_sq()
