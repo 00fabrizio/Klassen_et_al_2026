@@ -248,8 +248,8 @@ the two held values so it unpacks positionally like the others.
 | `Sigma_h` | 0 *(held)* | `d2` | -0.642482 |
 | `theta_bar` | 16.3077 deg | `kappa_ev` | 0.180540 |
 | `d1` | -0.0505519 | `Epk` | 0.004 *(held)* |
-| `a` | 0.952823 | `A3` | 4.07916e-06 |
-| `w_c` | 0.195026 | `gamma3` | 9.0 *(railed)* |
+| `a` | 0.952823 | `A3` | 3.23128e-05 |
+| `w_c` | 0.195026 | `gamma3` | 1.7803 |
 | `E_th` | 194.889 | `A4` | 2498.63 |
 | `n` | 0.963881 | `gamma4` | 1.78558 |
 | | | `kappa` | 0.126472 |
@@ -272,9 +272,37 @@ Both are now sane for a 45 cm phantom. `theta_bar` moves by **0.02 deg** between
 the single-energy fit and the 10-energy fit, so the angular lobe is a genuine
 transport constant rather than a per-energy adjustment.
 
-`gamma3` rails at 9, but that is a near-flat direction rather than a wall: `P` is
-clipped at `L`, and at `gamma3` = 9 the epithermal source already fills the 45 cm
-phantom for 9 of the 10 fitted energies. Known open item, see below.
+**`A3` and `gamma3` are fitted separately, against the 1 eV band.** In the joint
+fit `gamma3` railed at 9 with `A3` = 4.08e-06, and the 1 eV field came out 4-5x
+low. The cause is the objective: the fit minimizes unweighted least squares on
+*energy* fluence, where the epithermal band carries ~0 % of the total, so the
+pair is effectively unconstrained and drifts. Solving for `A3` over the full
+spectrum even returns a NEGATIVE value, because the epithermal tail reaches the
+100 keV region where the model already over-predicts ~1.9x.
+
+Refitting the two against the 1 eV bin +-10 neutron-energy bins (~0.31-3.2 eV,
+narrow enough that epithermal dominates and 100 keV cannot contaminate it), on
+10 primary energies and a coarse `z`/`rho` grid with everything else held:
+
+| `gamma3` | band cost | |
+|---|---|---|
+| **1.780** | **4.70e-05** | fitted |
+| 9.0 | 1.49e-04 | 3.2x worse (the railed value) |
+| 0.668 | 2.91e-04 | 6.2x worse (the below-1 eV slow fit's value) |
+
+`gamma3` within 10 % of the minimum spans only 1.59-1.99, so it is well
+identified once fitted where it carries signal. `A3` enters linearly, so the
+optimum at each `gamma3` is closed form and the scan is global, not local.
+
+1 eV median AM/MC goes 0.275 / 0.220 / 0.199 -> **0.783 / 0.950 / 1.040** at
+249 / 299 / 348 MeV/u, and the AM - MC map turns from a uniform deficit into a
+roughly balanced residual. Note that neither of the two values one might reach
+for by hand was close: 9.0 looked shape-correct only because a source that long
+has saturated to the phantom, which flattens the ratio for the wrong reason.
+
+A single `gamma3` still cannot hold all three energies — the trend
+0.78 / 0.95 / 1.04 climbs with `E0`, since the source is tied to a range that
+grows with it. 299 is nearly exact; 249 runs ~20 % low.
 
 *Superseded single-energy exploration (300 MeV/u), kept for the record.* All four
 variants scored on the *same* (current) table, so the costs are comparable:
@@ -396,25 +424,38 @@ Volume-weighted bias (Eq. 10), all 50 primary energies, full `rho <= 5.5 cm`:
 | **Option 1** carbon, `prefac1` | 7.2 % | 3.8 % | 9.1 % | 0/50 |
 | **Option 1** proton, `prefac2` escalated | 4.6 % | 6.4 % | 33.0 % | 0/50 |
 | **Option 2** proton, `proton_coupled_single.csv` | **10.3 %** | **2.8 %** | 29.9 % | 0/50 |
-| **Option 2** carbon, `carbon_coupled_theta_10E.csv` | **11.2 %** | **8.2 %** | 14.8 % | 0/50 |
+| **Option 2** carbon, `carbon_coupled_theta_10E.csv` | **8.8 %** | **8.1 %** | 13.2 % | 0/50 |
 
-Carbon's Option 2 numbers are the flattest of the four in `dPhi` (max 14.8 %
+Carbon's Option 2 numbers are the flattest of the four in `dPhi` (max 13.2 %
 against the proton's 29.9 %), but both curves are smooth and almost entirely
-**negative**, -3 % to -15 %. That is a structural under-prediction, not scatter.
-Band-by-band AM/MC at 299 MeV/u locates it:
+**negative**, -3 % to -13 %. That is a structural under-prediction, not scatter.
+
+**The cascade is what drives it, not the slow regimes.** Splitting the `dPhi`
+numerator by band at 299 MeV/u:
+
+| band | share of MC | contribution to `dPhi` |
+|---|---|---|
+| thermal | 16.9 % | -0.78 pp |
+| epithermal | 4.5 % | -0.90 pp |
+| evaporation | 17.6 % | -1.94 pp |
+| **cascade** | **61.0 %** | **-8.76 pp** |
+
+For `dK` it is starker: the cascade is 89 % of kerma and carries -9.5 of the
+-10.9. Refitting the epithermal pair (above) was worth ~2.5 pp of `dPhi` and
+essentially nothing on `dK`, which is the ceiling on what the slow regimes can
+buy. Band-by-band AM/MC at 299 MeV/u, after that refit:
 
 | band | rho=0.1 | rho=1.5 | rho=3.5 | rho=5.5 |
 |---|---|---|---|---|
 | 25 meV | 0.98 | 1.00 | 0.95 | 0.96 |
-| **1 eV** | **0.17** | **0.24** | **0.20** | **0.21** |
+| 1 eV | ~0.95 (refitted) | | | |
 | 100 keV | 1.96 | 1.70 | 1.58 | 1.16 |
 | 1 MeV | 1.04 | 1.30 | 1.19 | 1.05 |
 | **30 MeV** | 0.78 | 0.75 | 0.83 | **0.56** |
 
-Thermal is excellent. Epithermal is **4-6x low everywhere** — that is the
-`gamma3` rail, with `A3` having dropped 8x alongside it. And 30 MeV still falls
-off too fast laterally (0.78 on axis, 0.56 at `rho` = 5.5), so the halo is short
-at large radius even with the coupled kernel.
+Thermal and epithermal are now good. 30 MeV still falls off too fast laterally
+(0.78 on axis, 0.56 at `rho` = 5.5), so the halo is short at large radius even
+with the coupled kernel — that is where the remaining bias lives.
 
 The fitted and unfitted energies lie on the same smooth curve with no visible
 gap, so this is systematic, not overfitting.
@@ -539,12 +580,14 @@ FLUKA errors to absolute.
 
 ## Open items
 
-- **`gamma3` rails at 9 in the carbon set and epithermal comes out 4-6x low.**
-  The two are the same problem: the 1 eV band is ~0 % of the *energy* fluence the
-  objective minimizes, so `A3`/`gamma3` are effectively unconstrained by the fit
-  and drifted, while Eq. 10 grades *particle* fluence where thermal+epithermal is
-  13 %. Cheapest fix is a targeted refit of `A3`/`gamma3` against the 1 eV band;
-  the principled one is reweighting the objective by `1/E`. Neither is done.
+- **Carbon's residual bias is the cascade at large radius** — 30 MeV runs at 0.56
+  of MC by `rho` = 5.5 against 0.78 on axis, and the cascade carries -8.8 pp of
+  the -12 pp `dPhi` and -9.5 of -10.9 on `dK`. The halo is still short. This is
+  the only lever left that can move these numbers materially.
+- **The fitting objective does not match the reported metric**, which is what
+  left `A3`/`gamma3` unconstrained until they were refitted by hand against the
+  1 eV band. Reweighting the objective by `1/E` would align the two and remove
+  the need for per-regime patches; not done.
 - Option 2's proton set is fitted on a single primary energy. The natural next
   step is a 10-energy fit with `E_th`/`n` free, as was done for carbon.
 - Option 1's proton set requires renaming the fourth regime; "evaporation" with
