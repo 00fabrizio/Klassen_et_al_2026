@@ -51,8 +51,18 @@ metrics quoted in the text, which are given to 0.1 pp. This was raised and 3 was
 chosen anyway, for convention. Worth restating if the metrics are ever quoted to
 more precision.
 
-**Row order:** Global, Cascade, Evaporation, Epithermal, Thermal. `kappa_slow`
-sits in the Thermal block and is shared with Epithermal.
+**Row order:** Global, Cascade, Evaporation, Epithermal, Thermal.
+`kappa_slow` **leads the Epithermal block**, since it governs both slow regimes
+and Epithermal is the first of them.
+
+**`E_pk` is not listed.** It is held at 4 MeV for both species rather than
+fitted, and this is a table of *optimized* parameters. Consequence to watch: its
+value now appears nowhere in the manuscript — the symbol is defined in the
+evaporation spectrum in `derivation.tex`, but the number 4 MeV is not stated. The
+text needs to give it, or the model is not reproducible from the paper.
+
+The same "held, not fitted" logic would arguably remove carbon's `Sigma = 0`, but
+that value is a fit *outcome* that was then held, not an input, so it stays.
 
 ---
 

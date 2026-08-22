@@ -109,16 +109,20 @@ ROWS = [
         (r'$\gamma_{\mathrm{ev}}$', '--', 'gamma2'),
         (r'$d_{\mathrm{ev}}$', '--', 'd2'),
         (r'$\kappa_{\mathrm{ev}}$', r'$\mathrm{cm^{-1}}$', 'kappa_ev'),
-        (r'$E_{\mathrm{pk}}$', r'$\mathrm{GeV}$', 'Epk'),
     ]),
+    # kappa_slow governs BOTH slow regimes, so it leads the first of them.
+    # E_pk is not listed: it is held at 4 MeV for both species, not fitted, and
+    # this table is of optimized parameters. It is defined in the evaporation
+    # spectrum in the derivation; its VALUE now appears nowhere in the
+    # manuscript, so the text must state it for the model to be reproducible.
     ('Epithermal', [
+        (r'$\kappa_{\mathrm{slow}}$', r'$\mathrm{cm^{-1}}$', 'kappa_slow'),
         (r'$A_{\mathrm{ep}}$', r'$\mathrm{cm^{-2}}$', 'A3'),
         (r'$\gamma_{\mathrm{ep}}$', '--', 'gamma3'),
     ]),
     ('Thermal', [
         (r'$A_{\mathrm{th}}$', r'$\mathrm{cm^{-2}\,GeV^{-2}}$', 'A4'),
         (r'$\gamma_{\mathrm{th}}$', '--', 'gamma4'),
-        (r'$\kappa_{\mathrm{slow}}$', r'$\mathrm{cm^{-1}}$', 'kappa_slow'),
     ]),
 ]
 
