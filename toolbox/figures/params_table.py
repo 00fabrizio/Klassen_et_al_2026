@@ -23,6 +23,9 @@ Symbols follow the manuscript, with two disambiguations:
   kappa_slow  the single slow-neutron inverse diffusion length shared by the
             epithermal and thermal regimes, replacing the fixed pair
             (kappa_f, kappa_s) of the two-group form.
+
+Number formatting follows two agreed rules -- see format_pair. The caption is the
+author's and is preserved, never regenerated.
 """
 import os
 
@@ -39,19 +42,42 @@ def theta_to_n(t_deg):
     return (2 * c - 1) / (1 - c)
 
 
-def sig3(v):
-    """Three significant figures, LaTeX, consistently for every parameter."""
-    if v == 0:
-        return '0'
-    e = int(np.floor(np.log10(abs(v))))
-    # Plain decimal only where it still shows exactly three significant digits.
-    # e = 3 would print 2498.63 as "2499", which is four.
-    if -2 <= e <= 2:
-        s = f'{v:.{max(0, 2 - e)}f}'
-        return f'${s}$' if v < 0 else s
-    m = v / 10.0 ** e
-    s = rf'{m:.2f}\times10^{{{e}}}'
-    return f'${s}$'
+FLOOR = 3          # significant digits, minimum, for BOTH species
+
+
+def format_pair(a, b, floor=FLOOR):
+    """Format one row's two values under the agreed rules.
+
+    Rule 1  both species end on the SAME decimal place, so the columns are
+            directly comparable digit for digit.
+    Rule 2  at least `floor` significant digits for each; more where the two
+            species differ enough in magnitude that holding rule 1 demands it.
+
+    Where the row needs scientific notation, BOTH cells carry the factor and the
+    exponent is the SAME in both, chosen from the larger of the two.
+    """
+    nz = [v for v in (a, b) if v != 0]
+    if not nz:
+        return '0', '0'
+    kmax = int(np.floor(np.log10(max(abs(v) for v in nz))))
+    use_sci = kmax < -2 or kmax > 2
+    k = kmax if use_sci else 0
+    A, B = a / 10.0 ** k, b / 10.0 ** k
+
+    # decimals such that every nonzero value carries at least `floor` digits
+    dec = max(-int(np.floor(np.log10(abs(v)))) + floor - 1
+              for v in (A, B) if v != 0)
+    dec = max(dec, 0)
+
+    def cell(v):
+        if v == 0:
+            return '0'
+        t = f'{v:.{dec}f}'
+        if use_sci:
+            return rf'${t}\times10^{{{k}}}$'
+        return f'${t}$' if v < 0 else t
+
+    return cell(A), cell(B)
 
 
 P = pd.read_csv(f'{ROOT}/fitting_params/params_proton.csv',
@@ -131,7 +157,8 @@ for i, (sec, rows) in enumerate(ROWS):
     L.append(r'\midrule')
     L.append(rf'\multicolumn{{4}}{{l}}{{\textbf{{{sec}}}}} \\')
     for sym, unit, key in rows:
-        L.append(rf'{sym} & {unit} & {sig3(p[key])} & {sig3(c[key])} \\')
+        ca, cb = format_pair(p[key], c[key])
+        L.append(rf'{sym} & {unit} & {ca} & {cb} \\')
 L += [r'\bottomrule', r'\end{tabular}', r'\end{table}']
 
 open(path, 'w').write('\n'.join(L) + '\n')
@@ -139,4 +166,5 @@ print(f'wrote {path}\n')
 for sec, rows in ROWS:
     print(f'  {sec}')
     for sym, unit, key in rows:
-        print(f'    {key:10s} {sig3(p[key]):>22} {sig3(c[key]):>22}')
+        ca, cb = format_pair(p[key], c[key])
+        print(f'    {key:10s} {ca:>26} {cb:>26}')
