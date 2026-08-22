@@ -96,17 +96,32 @@ ROWS = [
     ]),
 ]
 
+DEFAULT_CAPTION = (r'\caption{Optimized model parameters for proton (${}^{1}$H) '
+                   r'and carbon (${}^{12}$C) beams.}')
+
+
+def existing_caption(path):
+    """Reuse the caption already in the file.
+
+    The caption is TEXT and therefore the author's, not this script's. Rewriting
+    it on every regeneration once silently replaced a hand-written caption, so
+    the rule now is that regenerating changes numbers and never wording. A fresh
+    checkout with no file yet gets DEFAULT_CAPTION.
+    """
+    if not os.path.exists(path):
+        return DEFAULT_CAPTION
+    for line in open(path):
+        if line.lstrip().startswith(r'\caption'):
+            return line.rstrip('\n')
+    return DEFAULT_CAPTION
+
+
+path = os.path.join(OUT, 'params.tex')
+
 L = [
     r'\begin{table}[t]',
     r'\centering',
-    r'\caption{Optimized model parameters for proton (${}^{1}$H) and carbon '
-    r'(${}^{12}$C) beams. All values are given to three significant digits. '
-    r'$\kappa_{\mathrm{slow}}$ is shared by the epithermal and thermal regimes. '
-    r'$E_{\mathrm{pk}}$ was held at \qty{4}{MeV} for both species, and '
-    r'$\Sigma$ was held at zero for carbon, the fit having driven '
-    r'it there. $n_{\mathrm{ang}}$ is the exponent of the cascade emission lobe '
-    r'$\cos^{n_{\mathrm{ang}}}\theta$, distinct from the prefactor sharpness '
-    r'$n$.}',
+    existing_caption(path),
     r'\label{tab:model_params}',
     r'\begin{tabular}{l l r r}',
     r'\toprule',
@@ -119,7 +134,6 @@ for i, (sec, rows) in enumerate(ROWS):
         L.append(rf'{sym} & {unit} & {sig3(p[key])} & {sig3(c[key])} \\')
 L += [r'\bottomrule', r'\end{tabular}', r'\end{table}']
 
-path = os.path.join(OUT, 'params.tex')
 open(path, 'w').write('\n'.join(L) + '\n')
 print(f'wrote {path}\n')
 for sec, rows in ROWS:
