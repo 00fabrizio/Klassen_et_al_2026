@@ -51,6 +51,17 @@ metrics quoted in the text, which are given to 0.1 pp. This was raised and 3 was
 chosen anyway, for convention. Worth restating if the metrics are ever quoted to
 more precision.
 
+**Caption spacing.** The generated file sets
+`\setlength{\belowcaptionskip}{6pt}` inside the `table` float, before the
+caption. The caption sits *above* the table, so the gap to the `\toprule` is
+`\belowcaptionskip`; `iopjournal.cls` honours it but sets no value, so it takes
+the article default of **0pt** and the caption lands 3 px off the rule at 150 dpi.
+6pt gives 16 px, about 0.75x the class's 8pt caption font.
+
+Keep it **scoped to the float**, never global: figure captions sit *below* their
+graphic, so a global `\belowcaptionskip` would add trailing space under every
+figure caption instead.
+
 **Row order:** Global, Cascade, Evaporation, Epithermal, Thermal.
 `kappa_slow` **leads the Epithermal block**, since it governs both slow regimes
 and Epithermal is the first of them.

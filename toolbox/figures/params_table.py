@@ -151,6 +151,12 @@ path = os.path.join(OUT, 'params.tex')
 L = [
     r'\begin{table}[t]',
     r'\centering',
+    # The caption sits ABOVE the table, so the gap to the toprule is
+    # \belowcaptionskip. iopjournal.cls honours it but sets no value, so it takes
+    # the article default of 0pt and the caption lands 3 px off the rule. Scoped
+    # to this float on purpose: a global setting would also add trailing space
+    # under FIGURE captions, which sit below their graphic.
+    r'\setlength{\belowcaptionskip}{6pt}',
     existing_caption(path),
     r'\label{tab:model_params}',
     r'\begin{tabular}{l l r r}',
