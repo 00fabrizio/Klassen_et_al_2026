@@ -61,7 +61,7 @@ for ax, idx, title, ylab in PANELS:
     ax.set_ylabel(ylab)
     ax.set_title(title)
     ax.grid(alpha=0.25)
-    ax.legend(frameon=False)
+    style.boxed_legend(ax)
 
 # same geometry as figure 2, but the legends sit inside the panels here, so the
 # top band figure 2 needs for its three long parameter labels is not required

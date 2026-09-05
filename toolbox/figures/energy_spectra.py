@@ -138,8 +138,11 @@ for ax in fig.axes:
     ax.set_yticks(t[(t > lo + 0.06 * (hi - lo)) & (t < hi - 0.06 * (hi - lo))])
     ax.set_ylim(lo, hi)
 
-# legend bottom left of the first panel, at the shared legend size
-axes_col['proton'][0].legend(loc='lower left', frameon=False)
+# A boxed legend in every panel, at mid height on the left. The spectra rise
+# towards the right of every panel, so the left half is free in all six.
+for sp in ('proton', 'carbon'):
+    for ax in axes_col[sp]:
+        style.boxed_legend(ax, loc='center left')
 
 fig.subplots_adjust(**{**style.MARGINS, 'left': 0.095, 'top': 0.90,
                        'bottom': 0.08})

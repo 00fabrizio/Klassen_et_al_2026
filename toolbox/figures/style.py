@@ -93,6 +93,21 @@ def top_legend(fig, ax, ncol):
     fig.subplots_adjust(**MARGINS)
 
 
+def boxed_legend(ax, loc='best', **kw):
+    """An in-panel legend in a plain box, shared by figures 3 and 7.
+
+    A square white box with a thin black edge, not matplotlib's rounded
+    semi-transparent default: the panels here carry a faint grid, which shows
+    through a transparent patch and makes the entries hard to read.
+    """
+    leg = ax.legend(loc=loc, frameon=True, fancybox=False, framealpha=1.0,
+                    facecolor='white', edgecolor='black',
+                    borderpad=0.5, labelspacing=0.4, handlelength=1.6,
+                    handletextpad=0.6, **kw)
+    leg.get_frame().set_linewidth(plt.rcParams['axes.linewidth'])
+    return leg
+
+
 def save(fig, name, out_dir):
     """Save as pdf + png at the CANVAS size.
 
