@@ -111,22 +111,17 @@ def draw(blocks, z, rho, quantity=None, exp_per_row=True, rho_tick_step=2):
                 im = ax.imshow(dat, origin='lower', aspect='auto',
                                extent=ext, norm=norm)
                 _ticks_white(ax)
-                # Ticks run the full mirrored range, out to the last whole
-                # centimetre inside rho_max -- the panels show all 5.5 cm and
-                # the axis has to say so. The panels touch, though, so a label
-                # on an edge SHARED with the next panel collides with that
-                # panel's; those are blanked, and only the outer edges of the
-                # block keep theirs. Blanking the label rather than dropping the
-                # tick keeps the tick marks even where the number goes.
-                xt = np.arange(np.ceil(rho_m.min()),
-                               np.floor(rho_m.max()) + 1, rho_tick_step)
-                edge = 0.08 * (rho_m.max() - rho_m.min())
+                # Ticks step out from the beam axis, 0, +-2, +-4 for a step of
+                # 2, rather than in from the edge. That keeps the outermost tick
+                # a clear 1.5 cm inside rho_max = 5.5, so no label lands on a
+                # shared panel edge and EVERY column carries the same labels --
+                # stepping in from the edge instead put a 5 hard against the
+                # next panel's 5 and had to be patched per column.
+                half = np.arange(0, np.floor(rho_m.max()) + 1, rho_tick_step)
+                xt = np.concatenate([-half[:0:-1], half])
                 ax.set_xticks(xt)
                 # rho is mirrored, so both halves are labelled with |rho|
-                ax.set_xticklabels(
-                    ['' if (j > 0 and t < rho_m.min() + edge)
-                     or (j < 2 and t > rho_m.max() - edge)
-                     else f'{abs(int(round(t)))}' for t in xt])
+                ax.set_xticklabels([f'{abs(int(round(t)))}' for t in xt])
                 ax.set_yticks(np.arange(np.ceil(z.min() / 10) * 10,
                                         np.floor(z.max() / 10) * 10 + 1, 10))
                 if j == 0 and si == 0:
