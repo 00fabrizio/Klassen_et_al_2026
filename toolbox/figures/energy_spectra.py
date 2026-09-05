@@ -79,6 +79,7 @@ for col, sp in enumerate(('proton', 'carbon')):
     R_of_E = pd.Series(rng['Range'].to_numpy(), index=rng['Ep'].to_numpy())
     sel = pick3(E_all)
     axes_col[sp] = []
+    top = 0.0
     print(f'{sp}: E_0 = {np.round(E_all[sel], 1)} MeV/u')
 
     for i, iEp in enumerate(sel):
@@ -89,9 +90,12 @@ for col, sp in enumerate(('proton', 'carbon')):
         axes_col[sp].append(ax)
 
         s = np.arange(0, en.size, 3)
-        ax.plot(en[s], np.asarray(mc_all[iEp])[iz, ir, s], linestyle='none',
+        mc = np.asarray(mc_all[iEp])[iz, ir, :]
+        am = model_spectrum(sp, Ep, iz, ir)
+        top = max(top, mc.max(), am.max())
+        ax.plot(en[s], mc[s], linestyle='none',
                 marker='o', ms=3.5, color='black', label='MC')
-        ax.plot(en, model_spectrum(sp, Ep, iz, ir), color=style.EV, label='AM')
+        ax.plot(en, am, color=style.EV, label='AM')
 
         ax.set_xscale('log')
         ax.text(0.02, 0.95, rf'$E_0={Ep:.0f}\,\mathrm{{MeV/u}}$',
@@ -105,6 +109,12 @@ for col, sp in enumerate(('proton', 'carbon')):
             ax.set_ylabel(r'$E_{\mathrm{n}}\,\phi(E_{\mathrm{n}})'
                           r'\;(\mathrm{cm^{-2}\,primary^{-1}})$')
 
+    # One y scale per species, so the three primary energies in a column are
+    # read against each other rather than each against its own maximum. The
+    # columns keep separate scales: carbon is ~40x the proton at the peak.
+    for ax in axes_col[sp]:
+        ax.set_ylim(0.0, 1.06 * top)
+
 for ax in fig.axes:
     ax.xaxis.set_major_locator(LogLocator(base=10))
     ax.xaxis.set_minor_locator(LogLocator(base=10.0, subs=np.arange(2, 10) * 0.1,
@@ -112,8 +122,7 @@ for ax in fig.axes:
     ax.xaxis.set_minor_formatter(NullFormatter())
     ax.tick_params(axis='both', which='both', direction='in', top=True, right=True)
     ax.yaxis.minorticks_on()
-    ax.set_ylim(bottom=0)
-    ax.yaxis.set_major_locator(MaxNLocator(nbins=4, steps=[1, 2, 4, 5, 10]))
+    ax.yaxis.set_major_locator(MaxNLocator(nbins=5, steps=[1, 2, 5, 10]))
     ax.grid(True, which='major', alpha=0.30, lw=0.8)
     ax.grid(True, which='minor', alpha=0.15, lw=0.5)
 
