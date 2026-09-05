@@ -11,6 +11,9 @@ E dPhi/dE, so phi = mc / en_low and
     Phi = sum phi dE            weight dE / en
     K   = sum k_phi phi dE      weight dE kc / en
 
+and Eq. 11 weights the (z, rho) map by the annular scoring volume
+V = pi (rho_j^2 - rho_{j-1}^2) dz, not by rho.
+
 Using dE and dE kc instead carries a spurious factor of E and shifts the band
 shares badly (evaporation 8.6 % -> 42.1 % of kerma).
 
@@ -68,6 +71,13 @@ def _one_energy(job):
     kc = k_coeff_pGy_cm2_from_GeV(en_low)
     nz, nE = len(z), len(en_low)
 
+    # Eq. 11 weights by the annular scoring volume V = pi(rho_j^2 - rho_{j-1}^2) dz,
+    # not by rho. The rho grid holds the OUTER edge of each annulus, so the inner
+    # edge of bin j is rho_{j-1} (0 for the first). dz is constant and cancels in
+    # the ratio. Weighting by rho understates the innermost bin by a factor 2.
+    edges = np.concatenate([[0.0], rho])
+    V = np.pi * (edges[1:] ** 2 - edges[:-1] ** 2)
+
     mc = np.asarray(np.load(f'{root}/npy_data/{species}_mc.npy',
                             mmap_mode='r')[i][:, :nr, :])
     M = Model(species=species,
@@ -82,7 +92,7 @@ def _one_energy(job):
     for w in (dE / en_low, dE * kc / en_low):          # Eq. 10 Phi, Eq. 10 K
         m = np.sum(mc * w, axis=2)
         q = np.sum(pr * w, axis=2)
-        out.append(np.sum((q - m) * rho) / np.sum(m * rho) * 100)
+        out.append(np.sum((q - m) * V) / np.sum(m * V) * 100)
     return tuple(out)
 
 

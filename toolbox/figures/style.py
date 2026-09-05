@@ -16,6 +16,10 @@ EV  = '#C44E52'      # red
 SLOW = '#55A868'     # green (epithermal + thermal share a kernel)
 EXTRA = ['#8172B2', '#CCB974', '#64B5CD']
 
+# species colours, for figures that compare proton against carbon
+PROTON = CAS      # blue
+CARBON = EV       # red
+
 SIZES = dict(
     axes_titlesize=23,
     axes_labelsize=21,
