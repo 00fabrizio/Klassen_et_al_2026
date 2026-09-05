@@ -2,7 +2,13 @@
 energy-fluence representation, on the beam axis near the Bragg peak.
 
 Three primary energies per species, chosen from the middle 70 % of the scanned
-range, evaluated at z = 0.8 R(E_0) and rho = 0.
+range, evaluated at z = 0.6 R(E_0) and rho = 0.
+
+0.6 R, not 0.8 R. The proton cascade production range is P = gamma_cas xt with
+gamma_cas = 0.743, i.e. 0.73 R at the on-axis spectral peak and 0.61 R at
+64 MeV, so 0.8 R lands past the kernel's plateau and the proton panels showed
+the falloff rather than the fit (AM/MC 0.44 at 64 MeV against 1.03 over the
+bright core). Carbon is unaffected either way, gamma_cas = 0.904.
 
 Two faults in the version this replaces:
 
@@ -77,7 +83,7 @@ for col, sp in enumerate(('proton', 'carbon')):
 
     for i, iEp in enumerate(sel):
         Ep = float(E_all[iEp])
-        iz = int(np.abs(z - 0.8 * float(R_of_E.loc[Ep])).argmin())
+        iz = int(np.abs(z - 0.6 * float(R_of_E.loc[Ep])).argmin())
         ir = int(np.abs(rho - 0.0).argmin())
         ax = fig.add_subplot(gs[i, 2 * col])
         axes_col[sp].append(ax)
