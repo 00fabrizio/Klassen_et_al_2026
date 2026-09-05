@@ -23,7 +23,6 @@ import numpy as np
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-from matplotlib import gridspec
 from matplotlib.ticker import MultipleLocator
 
 from toolbox.figures import style
@@ -83,10 +82,7 @@ CURVES = [
      rf'\,\mathrm{{cm^{{-1}}}}$)'),
 ]
 
-fig = plt.figure(figsize=(15.5, 6))
-gs = gridspec.GridSpec(1, 3, width_ratios=[1.0, 0.12, 1.0], wspace=0.0)
-ax_z = fig.add_subplot(gs[0, 0])
-ax_r = fig.add_subplot(gs[0, 2])
+fig, ax_z, ax_r = style.two_panel()
 
 for key, col, lab in CURVES:
     ax_z.plot(z, norm(CUT_Z[key]), color=col, label=lab)
@@ -109,10 +105,7 @@ ax_z.set_ylabel(r'relative spectral fluence (a.u.)')
 ax_r.set_title(r'$\rho$ dependence ($z=P$)', pad=8)
 ax_r.set_xlabel(r'$\rho$ (cm)')
 
-h, l = ax_z.get_legend_handles_labels()
-fig.legend(h, l, loc='upper center', ncol=3, frameon=False,
-           bbox_to_anchor=(0.5, 1.0))
-fig.subplots_adjust(left=0.07, right=0.98, bottom=0.16, top=0.82)
+style.top_legend(fig, ax_z, ncol=3)
 
 for ext in ('pdf', 'png'):
     fig.savefig(os.path.join(OUT, f'conceptual_spatial.{ext}'),

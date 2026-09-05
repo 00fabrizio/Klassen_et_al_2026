@@ -43,27 +43,26 @@ for lab, sp, col, mk in SPECIES:
     print(f'{lab:22s} mean |D_Phi| = {np.abs(dphi).mean():5.2f} %   '
           f'mean |D_K| = {np.abs(dk).mean():5.2f} %')
 
-fig, axes = plt.subplots(1, 2, figsize=(15.5, 6))
-PANELS = [(axes[0], 1, r'total fluence $\Phi$', r'$\Delta_{\Phi}$ (%)'),
-          (axes[1], 2, r'neutron kerma $K$',    r'$\Delta_{K}$ (%)')]
+fig, ax_phi, ax_k = style.two_panel()
+PANELS = [(ax_phi, 1, r'total fluence $\Phi$', r'$\Delta_{\Phi}$ (%)'),
+          (ax_k,   2, r'neutron kerma $K$',    r'$\Delta_{K}$ (%)')]
+
+# one symmetric limit shared by both panels, so the two are directly comparable
+lim = 1.12 * max(np.abs(res[sp][i]).max() for _, sp, _, _ in SPECIES for i in (1, 2))
 
 for ax, idx, title, ylab in PANELS:
-    lim = 0.0
     for lab, sp, col, mk in SPECIES:
-        v = res[sp][idx]
-        ax.plot(res[sp][0], v, linestyle='none', marker=mk, ms=7,
+        ax.plot(res[sp][0], res[sp][idx], linestyle='none', marker=mk, ms=7,
                 color=col, markerfacecolor='none', markeredgewidth=1.6,
                 label=lab)
-        lim = max(lim, np.abs(v).max())
     ax.axhline(0, color='k', lw=0.9)
-    ax.set_ylim(-1.12 * lim, 1.12 * lim)          # symmetric about zero
+    ax.set_ylim(-lim, lim)
     ax.set_xlabel(r'$E_0$ (MeV/u)')
     ax.set_ylabel(ylab)
     ax.set_title(title)
     ax.grid(alpha=0.25)
-    ax.legend(frameon=False)
 
-fig.tight_layout()
+style.top_legend(fig, ax_phi, ncol=2)
 for ext in ('pdf', 'png'):
     fig.savefig(os.path.join(OUT, f'volume_weighted_difference.{ext}'),
                 bbox_inches='tight', dpi=150 if ext == 'png' else None)

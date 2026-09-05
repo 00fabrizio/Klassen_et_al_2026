@@ -65,3 +65,29 @@ def apply():
 # the E_0 = ... annotation size, as used by the Phi/K figures
 def annot_size():
     return plt.rcParams['xtick.labelsize']
+
+
+# ---------------------------------------------------------------- layout
+# Two-panel figures (2 and 7) share one geometry so they sit the same on the
+# page: same canvas, same central gap, same margins, and one legend in a band
+# across the top rather than a legend inside each panel.
+FIGSIZE_2P = (15.5, 6)
+GAP = 0.20          # central gap, as a width_ratio against two panels of 1.0
+MARGINS = dict(left=0.07, right=0.98, bottom=0.16, top=0.82)
+
+
+def two_panel():
+    """Return (fig, ax_left, ax_right) with the shared two-panel geometry."""
+    import matplotlib.pyplot as plt
+    from matplotlib import gridspec
+    fig = plt.figure(figsize=FIGSIZE_2P)
+    gs = gridspec.GridSpec(1, 3, width_ratios=[1.0, GAP, 1.0], wspace=0.0)
+    return fig, fig.add_subplot(gs[0, 0]), fig.add_subplot(gs[0, 2])
+
+
+def top_legend(fig, ax, ncol):
+    """One legend in the band above both panels."""
+    h, l = ax.get_legend_handles_labels()
+    fig.legend(h, l, loc='upper center', ncol=ncol, frameon=False,
+               bbox_to_anchor=(0.5, 1.0))
+    fig.subplots_adjust(**MARGINS)
