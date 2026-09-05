@@ -92,7 +92,10 @@ c['n_ang'] = float(theta_to_n(c['theta_bar']))            # stored as mean angle
 
 ROWS = [
     ('Global', [
-        (r'$E_{\mathrm{th}}$', r'$\mathrm{MeV/u}$', 'E_th'),
+        # E_ref, not E_th: 'th' is the thermal regime everywhere else in the
+        # paper, and this is not a threshold -- at E_0 = E_ref the prefactor is
+        # 1 - 1/e, i.e. a saturation scale. The CSV column keeps its name.
+        (r'$E_{\mathrm{ref}}$', r'$\mathrm{MeV/u}$', 'E_th'),
         (r'$n$', '--', 'n'),
     ]),
     ('Cascade', [
