@@ -107,9 +107,7 @@ ax_r.set_xlabel(r'$\rho$ (cm)')
 
 style.top_legend(fig, ax_z, ncol=3)
 
-for ext in ('pdf', 'png'):
-    fig.savefig(os.path.join(OUT, f'conceptual_spatial.{ext}'),
-                bbox_inches='tight', dpi=150 if ext == 'png' else None)
+style.save(fig, 'conceptual_spatial', OUT)
 print(f'wrote conceptual_spatial.pdf / .png to {OUT}')
 for key, _, _ in CURVES:
     nz_, nr_ = norm(CUT_Z[key]), norm(CUT_R[key])

@@ -91,3 +91,18 @@ def top_legend(fig, ax, ncol):
     fig.legend(h, l, loc='upper center', ncol=ncol, frameon=False,
                bbox_to_anchor=(0.5, 1.0))
     fig.subplots_adjust(**MARGINS)
+
+
+def save(fig, name, out_dir):
+    """Save as pdf + png at the CANVAS size.
+
+    Deliberately not bbox_inches='tight': that crops to each figure's own
+    content, so two figures drawn on the same canvas save at different aspect
+    ratios and, scaled to \\textwidth, render at different heights. Figure 7
+    came out 3.1 % taller than figure 2 that way. Margins are set explicitly via
+    subplots_adjust, so there is nothing to crop.
+    """
+    import os
+    for ext in ('pdf', 'png'):
+        fig.savefig(os.path.join(out_dir, f'{name}.{ext}'),
+                    dpi=150 if ext == 'png' else None)
