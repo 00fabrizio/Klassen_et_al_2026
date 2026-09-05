@@ -100,25 +100,33 @@ def draw(blocks, z, rho, quantity=None, exp_per_row=True, rho_tick_step=2):
             norm = Normalize(0, vmax if vmax > 0 else 1)
             ext = [rho_m.min(), rho_m.max(), z.min(), z.max()]
 
-            ref = None
+            # NOT sharex/sharey: shared axes also share the tick formatter, so
+            # the last set_xticklabels in the row would win and the per-panel
+            # blanking below would collapse onto one pattern. All three panels
+            # are drawn with the same extent, so their limits match anyway.
             for j, dat in enumerate((mc, am, dif)):
-                ax = fig.add_subplot(gs[i, j], sharex=ref, sharey=ref)
-                ref = ref or ax
+                ax = fig.add_subplot(gs[i, j])
                 if i == 0 and j == 0:
                     first_ax[si] = ax
                 im = ax.imshow(dat, origin='lower', aspect='auto',
                                extent=ext, norm=norm)
                 _ticks_white(ax)
-                # panels touch, so a tick label on a panel edge collides with
-                # its neighbour's -- keep only those clear of both edges
+                # Ticks run the full mirrored range, out to the last whole
+                # centimetre inside rho_max -- the panels show all 5.5 cm and
+                # the axis has to say so. The panels touch, though, so a label
+                # on an edge SHARED with the next panel collides with that
+                # panel's; those are blanked, and only the outer edges of the
+                # block keep theirs. Blanking the label rather than dropping the
+                # tick keeps the tick marks even where the number goes.
                 xt = np.arange(np.ceil(rho_m.min()),
                                np.floor(rho_m.max()) + 1, rho_tick_step)
-                span = rho_m.max() - rho_m.min()
-                ax.set_xticks(xt[(xt > rho_m.min() + 0.08 * span) &
-                                 (xt < rho_m.max() - 0.08 * span)])
+                edge = 0.08 * (rho_m.max() - rho_m.min())
+                ax.set_xticks(xt)
                 # rho is mirrored, so both halves are labelled with |rho|
-                ax.xaxis.set_major_formatter(
-                    FuncFormatter(lambda x, pos: f'{abs(int(round(x)))}'))
+                ax.set_xticklabels(
+                    ['' if (j > 0 and t < rho_m.min() + edge)
+                     or (j < 2 and t > rho_m.max() - edge)
+                     else f'{abs(int(round(t)))}' for t in xt])
                 ax.set_yticks(np.arange(np.ceil(z.min() / 10) * 10,
                                         np.floor(z.max() / 10) * 10 + 1, 10))
                 if j == 0 and si == 0:
