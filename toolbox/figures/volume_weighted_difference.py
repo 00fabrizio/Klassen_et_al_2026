@@ -61,8 +61,11 @@ for ax, idx, title, ylab in PANELS:
     ax.set_ylabel(ylab)
     ax.set_title(title)
     ax.grid(alpha=0.25)
+    ax.legend(frameon=False)
 
-style.top_legend(fig, ax_phi, ncol=2)
+# same geometry as figure 2, but the legends sit inside the panels here, so the
+# top band figure 2 needs for its three long parameter labels is not required
+fig.subplots_adjust(**{**style.MARGINS, 'top': 0.91})
 for ext in ('pdf', 'png'):
     fig.savefig(os.path.join(OUT, f'volume_weighted_difference.{ext}'),
                 bbox_inches='tight', dpi=150 if ext == 'png' else None)
