@@ -27,9 +27,10 @@ from matplotlib import gridspec
 from matplotlib.ticker import MultipleLocator
 
 from toolbox.figures import style
-from toolbox.diffusion_integrals.diffusion_kernels import (
-    cascade_coupled, evaporation_diff, slow_diff_single,
-)
+from toolbox.diffusion_integrals import precompute_cascade as PC
+from toolbox.diffusion_integrals import precompute_kernels as PK
+from toolbox.diffusion_integrals import precompute_slow as PS
+from toolbox.diffusion_integrals.kernel_config import L_KERNEL, R_KERNEL
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 OUT = os.environ.get('FIGURES_DIR', os.path.join(ROOT, 'figures'))
@@ -37,23 +38,38 @@ os.makedirs(OUT, exist_ok=True)
 style.apply()
 
 # geometry
-P, L, R, RHO_MAX = 20.0, 45.0, 1.0, 3.5
+P, L, R, RHO_MAX = 20.0, 45.0, 1.0, 5.5
 # transport constants
 SIGMA, N_ANG = 0.02, 3.0
 KAPPA_EV, KAPPA_SLOW = 0.3, 0.2
 
-z = np.linspace(0.0, L, 400)
-rho = np.linspace(0.0, RHO_MAX, 300)
-Z, RHO = np.meshgrid(z, rho, indexing='ij')
+# The interpolation tables have ~1 cm z spacing, so reading the curves off them
+# gives visibly piecewise-linear segments. A schematic needs smooth curves, and
+# only ~1000 points are wanted, so each kernel is evaluated DIRECTLY here.
+z = np.linspace(0.0, L, 700)          # z cut, at rho = 0
+rho = np.linspace(0.0, RHO_MAX, 450)  # rho cut, at z = P
 
-F = {
-    'cas':  cascade_coupled(P, SIGMA, N_ANG, Z, RHO),
-    'ev':   evaporation_diff(P=P, kappa=KAPPA_EV, z=Z, r=RHO),
-    'slow': slow_diff_single(P=P, kappa=KAPPA_SLOW, z=Z, r=RHO),
-}
-F = {k: np.nan_to_num(v, nan=0.0, posinf=0.0, neginf=0.0) for k, v in F.items()}
 
-iP = int(np.abs(z - P).argmin())
+def kernels(z_vals, r_vals):
+    """(cascade, evaporation, slow) on the grid, shape (len(r), len(z))."""
+    cas = np.array([[PC.cascade_kernel_point(float(zz), float(rr), P, N_ANG, SIGMA)
+                     for zz in z_vals] for rr in r_vals])
+    ev = PK.evap_kernel(np.asarray(r_vals, float), np.asarray(z_vals, float),
+                        R=R_KERNEL, kappa=KAPPA_EV, P=P)
+    B = PS.axial_factor_squared_bc(np.asarray(z_vals, float), P, L_KERNEL,
+                                   np.hypot(PK.k, KAPPA_SLOW))
+    slow = PK._hankel_transform(np.asarray(r_vals, float), R_KERNEL, B)
+    return cas, ev, slow
+
+
+cas_z, ev_z, slow_z = kernels(z, np.array([0.0]))
+cas_r, ev_r, slow_r = kernels(np.array([P]), rho)
+
+CUT_Z = {'cas': cas_z[0], 'ev': ev_z[0], 'slow': slow_z[0]}
+CUT_R = {'cas': cas_r[:, 0], 'ev': ev_r[:, 0], 'slow': slow_r[:, 0]}
+CUT_Z = {k: np.nan_to_num(v, nan=0.0, posinf=0.0, neginf=0.0) for k, v in CUT_Z.items()}
+CUT_R = {k: np.nan_to_num(v, nan=0.0, posinf=0.0, neginf=0.0) for k, v in CUT_R.items()}
+
 norm = lambda a: a / a.max() if a.max() > 0 else a
 
 CURVES = [
@@ -73,13 +89,13 @@ ax_z = fig.add_subplot(gs[0, 0])
 ax_r = fig.add_subplot(gs[0, 2])
 
 for key, col, lab in CURVES:
-    ax_z.plot(z, norm(F[key][:, 0]), color=col, label=lab)      # rho = 0 cut
-    ax_r.plot(rho, norm(F[key][iP, :]), color=col)              # z = P cut
+    ax_z.plot(z, norm(CUT_Z[key]), color=col, label=lab)
+    ax_r.plot(rho, norm(CUT_R[key]), color=col)
 
 for ax, xv, txt, xmax, step in ((ax_z, P, r'$P$', L, 5),
-                                (ax_r, R, r'$R$', RHO_MAX, 0.5)):
+                                (ax_r, R, r'$R$', RHO_MAX, 1.0)):
     ax.axvline(xv, color='k', ls=':', lw=2.2)
-    ax.text(xv + 0.015 * xmax, 0.12, txt, ha='left', va='center',
+    ax.text(xv - 0.012 * xmax, 0.055, txt, ha='right', va='center',
             fontsize=style.annot_size())
     ax.xaxis.set_major_locator(MultipleLocator(step))
     ax.yaxis.set_major_locator(MultipleLocator(0.2))
@@ -102,7 +118,9 @@ for ext in ('pdf', 'png'):
     fig.savefig(os.path.join(OUT, f'conceptual_spatial.{ext}'),
                 bbox_inches='tight', dpi=150 if ext == 'png' else None)
 print(f'wrote conceptual_spatial.pdf / .png to {OUT}')
-for key, _, lab in CURVES:
-    a = F[key]
-    print(f'  {key:5s} peak at z={z[a[:,0].argmax()]:5.1f} cm (rho=0), '
-          f'rho-width at z=P: half-max at {rho[np.argmax(norm(a[iP,:])<0.5)]:.2f} cm')
+for key, _, _ in CURVES:
+    nz_, nr_ = norm(CUT_Z[key]), norm(CUT_R[key])
+    below = np.where(nr_ < 0.5)[0]
+    hw = f'{rho[below[0]]:.2f} cm' if len(below) else f'>{RHO_MAX:.1f} cm'
+    print(f'  {key:5s} z-peak at {z[nz_.argmax()]:5.1f} cm; '
+          f'rho half-max at {hw}')
