@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import gridspec
 from matplotlib.colors import Normalize
-from matplotlib.ticker import FuncFormatter
+from matplotlib.ticker import FuncFormatter, MaxNLocator
 
 from toolbox.figures import style
 
@@ -96,13 +96,17 @@ def draw(blocks, z, rho, quantity=None, exp_per_row=True, rho_tick_step=2):
             cb = fig.colorbar(im, cax=cax)
             e = block_exp if not exp_per_row else (
                 int(np.floor(np.log10(vmax))) if vmax > 0 else 0)
-            cb.ax.yaxis.set_major_formatter(
-                FuncFormatter(lambda x, pos, ee=e: f'{x / 10 ** ee:g}'))
-
+            # the default locator puts two ticks on a bar this narrow; ask for
+            # more, then drop the ones sitting on the shared row boundaries.
+            # The formatter goes on AFTER update_ticks, which resets it.
+            cb.locator = MaxNLocator(nbins=8, steps=[1, 2, 2.5, 5, 10])
+            cb.update_ticks()
             t = cb.get_ticks()
             lo, hi = norm.vmin, norm.vmax
             cb.set_ticks(t[(t > lo + 0.04 * (hi - lo)) &
                            (t < hi - 0.04 * (hi - lo))])
+            cb.ax.yaxis.set_major_formatter(
+                FuncFormatter(lambda x, pos, ee=e: f'{x / 10 ** ee:g}'))
             cb.ax.tick_params(colors='white', labelcolor='black',
                               direction='in',
                               labelsize=style.SIZES['tick_labelsize'] - 4)
@@ -113,7 +117,7 @@ def draw(blocks, z, rho, quantity=None, exp_per_row=True, rho_tick_step=2):
             if exp_per_row and e != 0:
 
                 cb.ax.set_ylabel(rf'$\times 10^{{{e}}}$', rotation=90,
-                                 labelpad=2,
+                                 labelpad=2, loc='top',
                                  fontsize=style.SIZES['tick_labelsize'] - 4)
             elif not exp_per_row and i == 0 and block_exp != 0:
                 cb.ax.set_title(rf'$\times 10^{{{block_exp}}}$', pad=4,
