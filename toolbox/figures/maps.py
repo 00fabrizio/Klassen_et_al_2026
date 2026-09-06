@@ -11,6 +11,7 @@ WIDTH = 15.5
 PANEL_ASPECT = 1.08
 SPECIES_GAP = 0.15
 CBAR_RATIO = 0.05
+CBAR_SHRINK = 0.86
 MARGINS = dict(left=0.055, right=0.895, bottom=0.11, top=0.90)
 
 
@@ -42,7 +43,7 @@ def draw(blocks, z, rho, quantity=None, exp_per_row=True, rho_tick_step=2):
     gs_outer = gridspec.GridSpec(1, 2, wspace=SPECIES_GAP)
     cols = [r'$\mathrm{MC}$', r'$\mathrm{AM}$', r'$|\Delta|$']
 
-    first_ax, cbar_ax = {}, {}
+    first_ax, cbar_ax, cbar_exp = {}, {}, {}
     for si, blk in enumerate(blocks):
         gs = gridspec.GridSpecFromSubplotSpec(
             nrows, 4, subplot_spec=gs_outer[si], wspace=0.0, hspace=0.0,
@@ -53,6 +54,7 @@ def draw(blocks, z, rho, quantity=None, exp_per_row=True, rho_tick_step=2):
         block_exp = int(np.floor(np.log10(block_max))) if block_max > 0 else 0
 
         cbar_ax[si] = []
+        cbar_exp[si] = []
         for i, (row_label, mc2d, am2d) in enumerate(blk['rows']):
             rho_m, mc = mirror(rho, mc2d)
             _, am = mirror(rho, am2d)
@@ -96,9 +98,6 @@ def draw(blocks, z, rho, quantity=None, exp_per_row=True, rho_tick_step=2):
             cb = fig.colorbar(im, cax=cax)
             e = block_exp if not exp_per_row else (
                 int(np.floor(np.log10(vmax))) if vmax > 0 else 0)
-            # the default locator puts two ticks on a bar this narrow; ask for
-            # more, then drop the ones sitting on the shared row boundaries.
-            # The formatter goes on AFTER update_ticks, which resets it.
             cb.locator = MaxNLocator(nbins=8, steps=[1, 2, 2.5, 5, 10])
             cb.update_ticks()
             t = cb.get_ticks()
@@ -114,16 +113,19 @@ def draw(blocks, z, rho, quantity=None, exp_per_row=True, rho_tick_step=2):
                 s.set_edgecolor('white')
             cb.ax.yaxis.get_offset_text().set_visible(False)
 
-            if exp_per_row and e != 0:
-
-                cb.ax.set_ylabel(rf'$\times 10^{{{e}}}$', rotation=90,
-                                 labelpad=2, loc='top',
-                                 fontsize=style.SIZES['tick_labelsize'] - 4)
-            elif not exp_per_row and i == 0 and block_exp != 0:
-                cb.ax.set_title(rf'$\times 10^{{{block_exp}}}$', pad=4,
-                                fontsize=style.SIZES['tick_labelsize'] - 2)
+            cbar_exp[si].append(e if exp_per_row else
+                                (block_exp if i == 0 else None))
 
     fig.subplots_adjust(**MARGINS)
+
+    for si in cbar_ax:
+        for cax, e in zip(cbar_ax[si], cbar_exp[si]):
+            b = cax.get_position()
+            cax.set_position([b.x0, b.y0, b.width, b.height * CBAR_SHRINK])
+            if e is not None and e != 0:
+                cax.set_title(rf'$\times 10^{{{e}}}$', pad=3, loc='left',
+                              fontsize=style.SIZES['tick_labelsize'] - 3)
+
     fig.canvas.draw()
 
     for si, blk in enumerate(blocks):
