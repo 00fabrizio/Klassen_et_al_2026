@@ -1,21 +1,4 @@
-"""Generates figures/Phi_comp.pdf and figures/K_comp.pdf -- the manuscript's
-maps of total fluence and neutron kerma, MC against the analytical model, at
-three primary energies per species.
-
-SUPERSEDES cells 13 and 14 of plots.ipynb, which carried three faults:
-
-  1. the model was read from {species}_model.npy, arrays written by the
-     superseded FACTORIZED model, so the AM column was not the current model;
-  2. the primary energies came from pd.read_csv('data/{species}_energies.txt'),
-     which consumes the first value as a header. That gives 49 energies whose
-     indices were then used against the 50-row MC array, so every row showed the
-     map one primary energy BELOW its label;
-  3. the integrals were sum(mc dE) and sum(mc dE k). The npy cache holds
-     E dPhi/dE, not dPhi/dE, so those carry a spurious factor of E. The correct
-     weights are dE/E and dE k(E)/E -- the same bug bias_curves.py documents.
-
-Layout and geometry come from toolbox/figures/maps.py, shared with figure 4.
-"""
+"""Generates figures/Phi_comp.pdf and figures/K_comp.pdf."""
 import os
 
 import numpy as np
@@ -37,8 +20,7 @@ dE = np.load(f'{ROOT}/npy_data/en_upp.npy') - en
 kc = k_coeff_pGy_cm2_from_GeV(en)
 nz, nr, nE = len(z), len(rho), len(en)
 
-# Eq. 10's weights. The cache holds E dPhi/dE, so dividing by E first is what
-# turns the sum into an integral of the differential fluence.
+
 W_PHI = dE / en
 W_K = dE * kc / en
 
@@ -49,7 +31,6 @@ SPEC = {
 
 
 def pick3(E, trim=0.15):
-    """Three energies spanning the middle 70 % of the scanned range."""
     N = len(E)
     idx = np.arange(int(np.floor(trim * N)), int(np.ceil((1 - trim) * N)))
     qs = np.linspace(0, 1, 5)[1:-1]

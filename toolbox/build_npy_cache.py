@@ -1,28 +1,4 @@
-#!/usr/bin/env python3
-"""
-build_npy_cache.py
-
-Rebuild the npy_data/ cache from the raw FLUKA USRTRACK .lis files in data/.
-
-The .lis files are the archival record; npy_data/ is a bit-exact,
-fast-loading cache of exactly what toolbox.dataloader.load_radial_data
-returns for every available primary energy.
-
-Writes, per species:
-    npy_data/{species}_mc.npy        (nE, nz, nr, nEn) float64
-    npy_data/{species}_err.npy       (nE, nz, nr, nEn) float64
-    npy_data/{species}_energies.npy  (nE,)             float64
-
-and the shared grids:
-    npy_data/z.npy, rho.npy, en_low.npy, en_upp.npy
-
-Arrays are streamed one energy at a time via open_memmap, so peak memory
-stays at a single energy slab (~25 MB) rather than the full ~236 MB array.
-Output is staged to .tmp files and atomically moved into place.
-
-Run from the repository root:
-    python toolbox/build_npy_cache.py
-"""
+"""Builds npy_data/ from the raw .lis files in data/."""
 import os
 import sys
 
@@ -30,7 +6,7 @@ import numpy as np
 from numpy.lib.format import open_memmap
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from toolbox.dataloader import load_radial_data  # noqa: E402
+from toolbox.dataloader import load_radial_data
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA = os.path.join(ROOT, "data")
@@ -40,7 +16,6 @@ SPECIES = ["proton", "carbon"]
 
 
 def energy_folders(species):
-    """Folder names for one species, ascending by primary energy."""
     d = os.path.join(DATA, species)
     return sorted(
         (f for f in os.listdir(d) if os.path.isdir(os.path.join(d, f))),
@@ -53,7 +28,6 @@ def build(species):
     nE = len(folders)
     print(f"\n{species}: {nE} energies ({folders[0]} .. {folders[-1]})")
 
-    # first energy fixes the grid shapes
     z, r, en_low, en_upp, MC, ERR = load_radial_data(species, [folders[0]])
     nz, nr, nEn = MC[0].shape
     print(f"  slab shape (nz, nr, nEn) = ({nz}, {nr}, {nEn})")
@@ -101,7 +75,6 @@ def main():
     for species in SPECIES:
         grids[species] = build(species)
 
-    # shared grids must agree across species
     ref_species = SPECIES[0]
     z, r, en_low, en_upp = grids[ref_species]
     for species in SPECIES[1:]:

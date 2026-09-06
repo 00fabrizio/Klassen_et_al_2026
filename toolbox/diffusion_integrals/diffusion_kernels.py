@@ -1,3 +1,4 @@
+"""Interpolators over the precomputed kernel tables."""
 import os
 import numpy as np
 from scipy.interpolate import RegularGridInterpolator
@@ -30,11 +31,6 @@ def _to_dimless(P, kappa, z, r):
     z = np.asarray(z, dtype=float)
     r = np.asarray(r, dtype=float)
 
-    # P is the production range and the source is Theta(z)Theta(P-z) inside a
-    # phantom of length L, so P > L means the source fills the phantom and the
-    # kernel saturates at P = L. Without this clamp P_hat leaves the [0,1]
-    # interpolation grid and the kernel silently returns fill_value = 0,
-    # switching the regime off instead of saturating it.
     P_hat = np.clip(P / L_KERNEL, 0.0, 1.0)
     kappa_hat = kappa * R_KERNEL
     xi = z / L_KERNEL
@@ -50,10 +46,7 @@ def evaporation_diff(P, kappa, z, r):
     return _evap_interp(pts)
 
 
-# ----------------------------------------------------------------------
-# coupled ballistic cascade kernel
-# ----------------------------------------------------------------------
-from .precompute_cascade import (                                  # noqa: E402
+from .precompute_cascade import (
     P_HAT_GRID_C, SIGMA_H_GRID, THETA_GRID_C, N_ANG_GRID, XI_GRID_C, RHO_GRID_C,
     NP_C, NS_C, NN_C, NZ_C, NR_C, cascade_path, theta_to_n, n_to_theta,
 )
@@ -62,19 +55,11 @@ cascade_dim = np.memmap(cascade_path, dtype="float32", mode="r",
                         shape=(NP_C, NS_C, NN_C, NZ_C, NR_C))
 _cascade_interp = RegularGridInterpolator(
     (P_HAT_GRID_C, SIGMA_H_GRID, THETA_GRID_C, XI_GRID_C, RHO_GRID_C),
-    cascade_dim, bounds_error=False, fill_value=None,   # clamp, never zero out
+    cascade_dim, bounds_error=False, fill_value=None,
 )
 
 
 def cascade_coupled_theta(P, Sigma_h, theta_bar, z, r):
-    """Coupled first-flight cascade kernel, angular lobe set by its mean angle.
-
-    theta_bar is the mean emission angle in degrees, bounded to (0, 60]: 60 deg
-    is n = 0 and theta_bar -> 0 is the forward delta. This is the axis the table
-    is built on and the variable to FIT in -- sensitivity is uniform along it,
-    whereas the equivalent exponent runs to infinity for a bounded change in
-    lobe width. See precompute_cascade for the derivation.
-    """
     P = np.asarray(P, dtype=float)
     Sigma_h = np.asarray(Sigma_h, dtype=float)
     theta_bar = np.asarray(theta_bar, dtype=float)
@@ -92,24 +77,10 @@ def cascade_coupled_theta(P, Sigma_h, theta_bar, z, r):
 
 
 def cascade_coupled(P, Sigma_h, n_ang, z, r):
-    """Coupled first-flight cascade kernel, angular lobe set by the exponent n.
-
-    Supersedes cascade_lateral(r) * cascade(z), which could not reproduce the
-    rho-dependent shift of the axial peak. Kept in exponent form so the fitted
-    parameter sets in fitting_params/ read unchanged; it converts to the
-    tabulated mean-angle axis via <cos theta> = (n+1)/(n+2). New fits should use
-    cascade_coupled_theta -- n is the ill-conditioned coordinate.
-    """
     return cascade_coupled_theta(P, Sigma_h, n_to_theta(n_ang), z, r)
 
 
-# ----------------------------------------------------------------------
-# slow-neutron kernel over the UNIFORM cylindrical source
-# ----------------------------------------------------------------------
-# ----------------------------------------------------------------------
-# single-diffusion-length slow kernel (squared propagator)
-# ----------------------------------------------------------------------
-from .precompute_slow import (                                     # noqa: E402
+from .precompute_slow import (
     KAPPA_SLOW_GRID, NK_SLOW, sq_path,
 )
 
@@ -122,13 +93,6 @@ _slow_sq_interp = RegularGridInterpolator(
 
 
 def slow_diff_single(P, kappa, z, r):
-    """Two-group slow kernel with a single diffusion length.
-
-    Collapsing kappa_f = kappa_s = kappa gives the squared propagator
-    1/(k^2+kappa^2)^2, tabulated directly, so this is one lookup rather than a
-    difference of two -- no removable singularity and no cancellation. The
-    migration length is M = sqrt(2)/kappa.
-    """
     P_hat = np.clip(np.asarray(P, dtype=float) / L_KERNEL, 0.0, 1.0)
     k_hat = np.clip(np.asarray(kappa, dtype=float) * R_KERNEL,
                     KAPPA_SLOW_GRID[0], KAPPA_SLOW_GRID[-1])

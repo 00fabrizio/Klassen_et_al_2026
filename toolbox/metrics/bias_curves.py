@@ -1,26 +1,4 @@
-"""Volume-weighted bias curves (paper Eq. 10), in parallel over primary energies.
-
-The metric contracts z, rho and E_n away into two scalars per primary energy, so
-each energy is an independent job. The model evaluation is ~99 % of the cost and
-is single-threaded, so spreading energies over processes is close to a linear
-speedup.
-
-Eq. 10 is defined on the DIFFERENTIAL fluence. The npy cache holds
-E dPhi/dE, so phi = mc / en_low and
-
-    Phi = sum phi dE            weight dE / en
-    K   = sum k_phi phi dE      weight dE kc / en
-
-and Eq. 11 weights the (z, rho) map by the annular scoring volume
-V = pi (rho_j^2 - rho_{j-1}^2) dz, not by rho.
-
-Using dE and dE kc instead carries a spurious factor of E and shifts the band
-shares badly (evaporation 8.6 % -> 42.1 % of kerma).
-
-Note that this is NOT the fitting objective, which is unweighted least squares on
-the energy fluence (~88 % cascade). Eq. 10 grades particle fluence (~13 % slow)
-and kerma (~0 % slow). The two do not rank parameter sets the same way.
-"""
+"""Volume-weighted bias of total fluence and kerma against MC."""
 import glob
 import hashlib
 import os
@@ -29,7 +7,7 @@ from concurrent.futures import ProcessPoolExecutor
 import numpy as np
 import pandas as pd
 
-# positional order of both production parameter files
+
 COLS = ['A1', 'gamma1', 'Sigma', 'ang', 'd1', 'a', 'w_c',
         'A2', 'gamma2', 'd2', 'kappa_ev', 'Epk',
         'A3', 'gamma3', 'A4', 'gamma4', 'kappa_slow', 'E_th', 'n']
@@ -44,7 +22,6 @@ _CACHE = os.path.join(_ROOT, 'npy_data', '.bias_cache')
 
 
 def _load(species, param_file=None):
-    """Return (values, entry_point_name). Slot 3 fixes which entry point."""
     f = param_file or os.path.join(_ROOT, 'fitting_params',
                                    DEFAULT_PARAMS[species])
     par = pd.read_csv(f, index_col=0).loc['opt params']
@@ -55,7 +32,6 @@ def _load(species, param_file=None):
 
 
 def _one_energy(job):
-    """Bias of one primary energy. Runs in a worker process."""
     species, i, Ep, nr, vals, entry = job
 
     import numpy as np
@@ -71,10 +47,6 @@ def _one_energy(job):
     kc = k_coeff_pGy_cm2_from_GeV(en_low)
     nz, nE = len(z), len(en_low)
 
-    # Eq. 11 weights by the annular scoring volume V = pi(rho_j^2 - rho_{j-1}^2) dz,
-    # not by rho. The rho grid holds the OUTER edge of each annulus, so the inner
-    # edge of bin j is rho_{j-1} (0 for the first). dz is constant and cancels in
-    # the ratio. Weighting by rho understates the innermost bin by a factor 2.
     edges = np.concatenate([[0.0], rho])
     V = np.pi * (edges[1:] ** 2 - edges[:-1] ** 2)
 
@@ -89,7 +61,7 @@ def _one_energy(job):
     pr = getattr(M, entry)((Z, R, En, EP), *vals).reshape(nz, nr, nE)
 
     out = []
-    for w in (dE / en_low, dE * kc / en_low):          # Eq. 10 Phi, Eq. 10 K
+    for w in (dE / en_low, dE * kc / en_low):
         m = np.sum(mc * w, axis=2)
         q = np.sum(pr * w, axis=2)
         out.append(np.sum((q - m) * V) / np.sum(m * V) * 100)
@@ -97,13 +69,6 @@ def _one_energy(job):
 
 
 def bias_curves(species, param_file=None, nr=55, workers=None, cache=True):
-    """Return (Ep, delta_Phi, delta_K) in percent for every primary energy.
-
-    Results are cached under npy_data/.bias_cache, keyed by the parameter
-    values, nr, AND the identity of the kernel tables. The tables are part of
-    the model: rebuilding one changes the curves at unchanged parameters, so
-    keying on parameters alone would serve pre-rebuild results silently.
-    """
     vals, entry = _load(species, param_file)
     Ep_all = np.load(f'{_ROOT}/npy_data/{species}_energies.npy')
 

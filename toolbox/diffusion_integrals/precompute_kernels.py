@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+"""Axial factors, Hankel transform and the evaporation kernel table."""
 import numpy as np
 from scipy.special import j0, j1
 import os
@@ -8,29 +8,27 @@ out_dir = os.path.dirname(os.path.abspath(__file__))
 evap_path = os.path.join(out_dir, "evap_dim.dat")
 
 
-try:                                    # imported as part of the package
+try:
     from .kernel_config import (
         R_KERNEL, L_KERNEL,
         P_HAT_GRID, KAPPA_HAT_GRID, XI_GRID, RHO_GRID,
         NP, NK, NZ, NR
     )
-except ImportError:                     # run directly as a script
+except ImportError:
     from kernel_config import (
         R_KERNEL, L_KERNEL,
         P_HAT_GRID, KAPPA_HAT_GRID, XI_GRID, RHO_GRID,
         NP, NK, NZ, NR
     )
 
-# -----------------------
-# Global integration setup
-# -----------------------
+
 NK_INT = 801
-K_MAX = 30.0  # 1/cm
+K_MAX = 30.0
 
 k = np.linspace(0.0, K_MAX, NK_INT)
 dk = k[1] - k[0]
 
-# Simpson weights
+
 w = np.ones(NK_INT)
 w[1:-1:2] = 4.0
 w[2:-1:2] = 2.0
@@ -39,29 +37,14 @@ w *= dk / 3.0
 ALPHA_MIN = 1e-12
 
 
-# -----------------------
-# Radial factor
-# -----------------------
 def top_hat_factor(R: float) -> np.ndarray:
-    """
-    Manuscript-consistent radial factor after radial source integration:
-        J1(kR)
-    The factor R is absorbed in the fitted amplitude A_ev / A_ep/th.
-    """
     th = np.empty_like(k)
-    th[0] = 0.0  # J1(0) = 0
+    th[0] = 0.0
     th[1:] = j1(k[1:] * R)
     return th
 
 
-# -----------------------
-# Axial factors from manuscript
-# -----------------------
 def axial_factor_evap(z_vals: np.ndarray, P: float, alpha: np.ndarray) -> np.ndarray:
-    """
-    Eq. (24):
-        A_free(z,P,alpha) = {...} / (2 alpha^2)
-    """
     z_vals = np.asarray(z_vals, dtype=float)
     a = np.maximum(alpha[None, :], ALPHA_MIN)
 
@@ -89,10 +72,6 @@ def axial_factor_evap(z_vals: np.ndarray, P: float, alpha: np.ndarray) -> np.nda
 
 
 def axial_factor_thermal_bc(z_vals: np.ndarray, P: float, L: float, alpha: np.ndarray) -> np.ndarray:
-    """
-    Stable thermal / bounded axial factor with overall 1/alpha^2 scaling.
-    Numerically safe for large alpha*L.
-    """
     z_vals = np.asarray(z_vals, dtype=float)
     alpha = np.asarray(alpha, dtype=float)
 
@@ -104,7 +83,6 @@ def axial_factor_thermal_bc(z_vals: np.ndarray, P: float, L: float, alpha: np.nd
     large = ~small
     large_idx = np.where(large)[0]
 
-    # ---- small-alpha limit
     if np.any(small):
         for iz, z in enumerate(z_vals):
             if 0.0 < z < P:
@@ -114,18 +92,16 @@ def axial_factor_thermal_bc(z_vals: np.ndarray, P: float, L: float, alpha: np.nd
             else:
                 A[iz, small] = 0.0
 
-    # ---- stable evaluation for alpha > 0
     if np.any(large):
-        a = alpha[large]                      # (Nk_large,)
-        denom = 0.5 * (1.0 - np.exp(-2.0 * a * L))   # scaled sinh(aL)
+        a = alpha[large]
+        denom = 0.5 * (1.0 - np.exp(-2.0 * a * L))
 
         idx_in = np.where((z_vals > 0.0) & (z_vals < P))[0]
         idx_ab = np.where((z_vals >= P) & (z_vals < L))[0]
 
-        # z in (0, P)
         if idx_in.size:
-            z = z_vals[idx_in][:, None]      # (n_in, 1)
-            aa = a[None, :]                  # (1, Nk_large)
+            z = z_vals[idx_in][:, None]
+            aa = a[None, :]
 
             term1 = 0.5 * (1.0 - np.exp(-2.0 * aa * L))
             term2 = 0.5 * (
@@ -142,7 +118,6 @@ def axial_factor_thermal_bc(z_vals: np.ndarray, P: float, L: float, alpha: np.nd
             num_scaled = term1 - term2 - term3
             A[np.ix_(idx_in, large_idx)] = num_scaled / (aa**2 * denom)
 
-        # z in [P, L)
         if idx_ab.size:
             z = z_vals[idx_ab][:, None]
             aa = a[None, :]
@@ -158,24 +133,16 @@ def axial_factor_thermal_bc(z_vals: np.ndarray, P: float, L: float, alpha: np.nd
 
     return A
 
-# -----------------------
-# Hankel kernel evaluator
-# -----------------------
-def _hankel_transform(r_vals: np.ndarray, R: float, A_ax: np.ndarray) -> np.ndarray:
-    """
-    Radial Hankel transform shared by both kernels:
-        integral dk J0(k r) J1(kR) A_axial(...)
-    Returns I(r,z) with shape (Nr, Nz).
-    """
-    top_hat = top_hat_factor(R)               # J1(kR)
-    WT = w * top_hat                          # (Nk,)
-    J = j0(r_vals[:, None] * k[None, :])      # (Nr, Nk)
 
-    return (J * WT[None, :]) @ A_ax.T         # (Nr, Nz)
+def _hankel_transform(r_vals: np.ndarray, R: float, A_ax: np.ndarray) -> np.ndarray:
+    top_hat = top_hat_factor(R)
+    WT = w * top_hat
+    J = j0(r_vals[:, None] * k[None, :])
+
+    return (J * WT[None, :]) @ A_ax.T
 
 
 def evap_kernel(r_vals, z_vals, R: float, kappa: float, P: float) -> np.ndarray:
-    """Evaporation kernel: free-space axial factor (Eqs. 23-24)."""
     r_vals = np.asarray(r_vals, dtype=float)
     z_vals = np.asarray(z_vals, dtype=float)
 
@@ -185,11 +152,7 @@ def evap_kernel(r_vals, z_vals, R: float, kappa: float, P: float) -> np.ndarray:
     return _hankel_transform(r_vals, R, A_ax)
 
 
-# -----------------------
-# Precomputation
-# -----------------------
 def main():
-    """Build the evaporation kernel table."""
     R, L = R_KERNEL, L_KERNEL
     evap_dim = np.memmap(
         evap_path, dtype="float32", mode="w+", shape=(NP, NK, NZ, NR)

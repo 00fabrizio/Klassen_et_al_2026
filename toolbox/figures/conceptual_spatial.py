@@ -1,22 +1,4 @@
-"""Generates figures/conceptual_spatial.pdf -- the schematic z- and rho-dependence
-of the spatial factor of each energy regime.
-
-Every curve is the CURRENT model kernel, evaluated on one grid:
-
-    cascade              cascade_coupled(P, Sigma, n_ang, z, rho)
-    evaporation          evaporation_diff(P, kappa_ev, z, rho)
-    epithermal/thermal   slow_diff_single(P, kappa_slow, z, rho)
-
-The version this replaces drew the cascade's two panels from two DIFFERENT
-objects -- an axial buildup law for the z panel and an ad hoc Gaussian-smeared
-disk for the rho panel -- so the two halves of the figure did not describe the
-same function. It also used the two-group slow kernel with kappa_f and kappa_s.
-Both of those belong to the superseded factorized model and the functions no
-longer exist. Here each regime is one F(z, rho): the left panel is its rho = 0
-cut and the right panel its z = P cut, which is what the axes claim.
-
-Parameters are illustrative but of the same order as the fitted ones.
-"""
+"""Generates figures/conceptual_spatial.pdf."""
 import os
 
 import numpy as np
@@ -36,21 +18,18 @@ OUT = os.environ.get('FIGURES_DIR', os.path.join(ROOT, 'figures'))
 os.makedirs(OUT, exist_ok=True)
 style.apply()
 
-# geometry
+
 P, L, R, RHO_MAX = 20.0, 45.0, 1.0, 5.5
-# transport constants
+
 SIGMA, N_ANG = 0.02, 3.0
 KAPPA_EV, KAPPA_SLOW = 0.3, 0.2
 
-# The interpolation tables have ~1 cm z spacing, so reading the curves off them
-# gives visibly piecewise-linear segments. A schematic needs smooth curves, and
-# only ~1000 points are wanted, so each kernel is evaluated DIRECTLY here.
-z = np.linspace(0.0, L, 700)          # z cut, at rho = 0
-rho = np.linspace(0.0, RHO_MAX, 450)  # rho cut, at z = P
+
+z = np.linspace(0.0, L, 700)
+rho = np.linspace(0.0, RHO_MAX, 450)
 
 
 def kernels(z_vals, r_vals):
-    """(cascade, evaporation, slow) on the grid, shape (len(r), len(z))."""
     cas = np.array([[PC.cascade_kernel_point(float(zz), float(rr), P, N_ANG, SIGMA)
                      for zz in z_vals] for rr in r_vals])
     ev = PK.evap_kernel(np.asarray(r_vals, float), np.asarray(z_vals, float),

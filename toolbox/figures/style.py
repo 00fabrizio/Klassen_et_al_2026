@@ -1,24 +1,16 @@
-"""Shared plotting style for the manuscript figures.
-
-Every figure generator calls `apply()` first and takes its sizes from
-`plt.rcParams` rather than hardcoding them, so a change here moves all figures
-together. Sizes are those of the Phi/K comparison figures, which are the
-reference for label and tick size.
-
-Colours are per REGIME and fixed, so a regime keeps its colour across figures.
-"""
+"""Shared plotting style for the manuscript figures."""
 import matplotlib.pyplot as plt
 from matplotlib import font_manager
 
-# regime colours -- keep these stable across every figure
-CAS = '#4C72B0'      # blue
-EV  = '#C44E52'      # red
-SLOW = '#55A868'     # green (epithermal + thermal share a kernel)
+
+CAS = '#4C72B0'
+EV  = '#C44E52'
+SLOW = '#55A868'
 EXTRA = ['#8172B2', '#CCB974', '#64B5CD']
 
-# species colours, for figures that compare proton against carbon
-PROTON = CAS      # blue
-CARBON = EV       # red
+
+PROTON = CAS
+CARBON = EV
 
 SIZES = dict(
     axes_titlesize=23,
@@ -33,7 +25,6 @@ def has_times():
 
 
 def apply():
-    """Times New Roman serif, stix math, the reference sizes, inward ticks."""
     plt.rcParams['font.family'] = 'serif'
     plt.rcParams['font.serif'] = ['Times New Roman', 'Nimbus Roman',
                                   'Liberation Serif', 'DejaVu Serif']
@@ -62,22 +53,16 @@ def apply():
     })
 
 
-# the E_0 = ... annotation size, as used by the Phi/K figures
 def annot_size():
     return plt.rcParams['xtick.labelsize']
 
 
-# ---------------------------------------------------------------- layout
-# Two-panel figures (2 and 7) share one geometry so they sit the same on the
-# page: same canvas, same central gap, same margins, and one legend in a band
-# across the top rather than a legend inside each panel.
 FIGSIZE_2P = (15.5, 6)
-GAP = 0.20          # central gap, as a width_ratio against two panels of 1.0
+GAP = 0.20
 MARGINS = dict(left=0.07, right=0.98, bottom=0.16, top=0.82)
 
 
 def two_panel():
-    """Return (fig, ax_left, ax_right) with the shared two-panel geometry."""
     import matplotlib.pyplot as plt
     from matplotlib import gridspec
     fig = plt.figure(figsize=FIGSIZE_2P)
@@ -86,7 +71,6 @@ def two_panel():
 
 
 def top_legend(fig, ax, ncol):
-    """One legend in the band above both panels."""
     h, l = ax.get_legend_handles_labels()
     fig.legend(h, l, loc='upper center', ncol=ncol, frameon=False,
                bbox_to_anchor=(0.5, 1.0))
@@ -94,12 +78,6 @@ def top_legend(fig, ax, ncol):
 
 
 def boxed_legend(ax, loc='best', **kw):
-    """An in-panel legend in a plain box, shared by figures 3 and 7.
-
-    A square white box with a thin black edge, not matplotlib's rounded
-    semi-transparent default: the panels here carry a faint grid, which shows
-    through a transparent patch and makes the entries hard to read.
-    """
     leg = ax.legend(loc=loc, frameon=True, fancybox=False, framealpha=1.0,
                     facecolor='white', edgecolor='black',
                     borderpad=0.5, labelspacing=0.4, handlelength=1.6,
@@ -109,14 +87,6 @@ def boxed_legend(ax, loc='best', **kw):
 
 
 def save(fig, name, out_dir):
-    """Save as pdf + png at the CANVAS size.
-
-    Deliberately not bbox_inches='tight': that crops to each figure's own
-    content, so two figures drawn on the same canvas save at different aspect
-    ratios and, scaled to \\textwidth, render at different heights. Figure 7
-    came out 3.1 % taller than figure 2 that way. Margins are set explicitly via
-    subplots_adjust, so there is nothing to crop.
-    """
     import os
     for ext in ('pdf', 'png'):
         fig.savefig(os.path.join(out_dir, f'{name}.{ext}'),

@@ -1,25 +1,4 @@
-"""Generates figures/energy_spectra.pdf -- MC against the analytical model in the
-energy-fluence representation, on the beam axis near the Bragg peak.
-
-Three primary energies per species, chosen from the middle 70 % of the scanned
-range, evaluated at z = 0.6 R(E_0) and rho = 0.
-
-0.6 R, not 0.8 R. The proton cascade production range is P = gamma_cas xt with
-gamma_cas = 0.743, i.e. 0.73 R at the on-axis spectral peak and 0.61 R at
-64 MeV, so 0.8 R lands past the kernel's plateau and the proton panels showed
-the falloff rather than the fit (AM/MC 0.44 at 64 MeV against 1.03 over the
-bright core). Carbon is unaffected either way, gamma_cas = 0.904.
-
-Two faults in the version this replaces:
-
-  * it read the analytical model from {species}_model.npy, arrays written by the
-    superseded factorized model, so the AM curves were not the current model;
-  * it read the primary energies with pd.read_csv on data/{species}_energies.txt,
-    which consumes the first value as a header. That gives 49 energies, whose
-    indices were then used against the 50-row MC array, so every panel showed a
-    spectrum one primary energy below its label -- 2.6-3.2 MeV for protons,
-    5.2-6.3 MeV/u for carbon. The energies come from npy_data here.
-"""
+"""Generates figures/energy_spectra.pdf."""
 import os
 
 import numpy as np
@@ -49,7 +28,6 @@ SPEC = {'proton': ('params_proton.csv', 'spectral_energy_fluence', r'$^{1}\mathr
 
 
 def pick3(E, trim=0.15):
-    """Three energies spanning the middle 70 % of the scanned range."""
     N = len(E)
     idx = np.arange(int(np.floor(trim * N)), int(np.ceil((1 - trim) * N)))
     qs = np.linspace(0, 1, 5)[1:-1]
@@ -109,9 +87,6 @@ for col, sp in enumerate(('proton', 'carbon')):
             ax.set_ylabel(r'$E_{\mathrm{n}}\,\phi(E_{\mathrm{n}})'
                           r'\;(\mathrm{cm^{-2}\,primary^{-1}})$')
 
-    # One y scale per species, so the three primary energies in a column are
-    # read against each other rather than each against its own maximum. The
-    # columns keep separate scales: carbon is ~40x the proton at the peak.
     for ax in axes_col[sp]:
         ax.set_ylim(0.0, 1.06 * top)
 
@@ -126,20 +101,14 @@ for ax in fig.axes:
     ax.grid(True, which='major', alpha=0.30, lw=0.8)
     ax.grid(True, which='minor', alpha=0.15, lw=0.5)
 
-# The rows share edges (hspace=0), so a tick label sitting at a panel's top or
-# bottom edge lands on the neighbouring panel's edge too and the two collide.
-# MaxNLocator's prune= is not enough: it drops the first/last tick it GENERATES,
-# which can be outside the view, leaving a label still sitting on the edge. Drop
-# anything within 6 % of either edge instead, and freeze the limits so the
-# fixed tick list stays valid.
+
 for ax in fig.axes:
     lo, hi = ax.get_ylim()
     t = ax.get_yticks()
     ax.set_yticks(t[(t > lo + 0.06 * (hi - lo)) & (t < hi - 0.06 * (hi - lo))])
     ax.set_ylim(lo, hi)
 
-# A boxed legend in every panel, at mid height on the left. The spectra rise
-# towards the right of every panel, so the left half is free in all six.
+
 for sp in ('proton', 'carbon'):
     for ax in axes_col[sp]:
         style.boxed_legend(ax, loc='center left')
@@ -147,10 +116,9 @@ for sp in ('proton', 'carbon'):
 fig.subplots_adjust(**{**style.MARGINS, 'left': 0.095, 'top': 0.90,
                        'bottom': 0.08})
 
-# species labels placed like figures 5 and 6: figure text above the axes, at the
-# title size, the same absolute distance above the panels
+
 fig.canvas.draw()
-GAP_IN = 0.42                                    # inches above the axes, as in 5/6
+GAP_IN = 0.42
 dy = GAP_IN / fig.get_figheight()
 for sp in ('proton', 'carbon'):
     box = axes_col[sp][0].get_position()

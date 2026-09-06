@@ -1,3 +1,4 @@
+"""Reader for the raw FLUKA .lis output."""
 import numpy as np
 import pandas as pd
 from scipy.interpolate import interp1d
@@ -21,7 +22,6 @@ def load_radial_data(species, energies):
         filename = f'data/{species}/{energy}/New_ring_{species}_22_tab.lis'
         get_rows = pd.read_csv(filename, names=['header'])
 
-
         mc, err = np.zeros((num_z, num_r, num_e)), np.zeros((num_z, num_r, num_e))
         get_rows = pd.read_csv(filename, names=['header'])
         rows = get_rows[get_rows['header'].str.contains('Detector')].index.to_numpy()[:-25].reshape((num_r, num_z))
@@ -36,10 +36,8 @@ def load_radial_data(species, energies):
                 mc[i, j, :] = df_block[2].astype(float).to_numpy()
                 err[i, j, :] = df_block[3].astype(float).to_numpy()
 
-
         en_low = df_block[0].astype(float).to_numpy()
         en_upp = df_block[1].astype(float).to_numpy()
-
 
         mc = np.flip(mc, axis=0)*en_low
         err = np.flip(err, axis=0)

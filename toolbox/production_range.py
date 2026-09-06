@@ -1,3 +1,4 @@
+"""Production range xt(E0, En) from the primary-range solver output."""
 import numpy as np
 import pandas as pd
 from pathlib import Path
@@ -5,14 +6,6 @@ from pathlib import Path
 BASE = Path(__file__).resolve().parent.parent / "data" / "primary_range"
 
 def build_xt_table(species: str, Ep_list, En_list_gev):
-    """
-    Returns
-    -------
-    XT : (nEp, nEn) array
-        XT[i, j] = xt(Ep_list[i], En_list_gev[j]) in cm
-        using your *original* mapping code (np.interp in En inside each file),
-        but evaluated only at En_list_gev and only once.
-    """
     Ep_list = np.asarray(Ep_list, dtype=float)
     En_list_gev = np.asarray(En_list_gev, dtype=float)
     En_mev = En_list_gev * 1000.0
@@ -23,7 +16,7 @@ def build_xt_table(species: str, Ep_list, En_list_gev):
         if species == "proton":
             df = pd.read_csv(BASE / "protonSolver" / f"protonSolver_{Ep}MeV")
             EnergyMEV = df["EnergyMEV"].to_numpy(dtype=float)
-            xt = df["xt"].to_numpy(dtype=float) * 100.0  # -> cm
+            xt = df["xt"].to_numpy(dtype=float) * 100.0
         elif species == "carbon":
             df = pd.read_csv(BASE / "carbonSolver" / f"carbonSolver_{Ep}MeV")
             EnergyMEV = df["EnergyMEV"].to_numpy(dtype=float) / 6.0
@@ -39,7 +32,6 @@ def build_xt_table(species: str, Ep_list, En_list_gev):
         EnergyMEV = EnergyMEV[order]
         xt = xt[order]
 
-        # only evaluate at your En points (still uses 1D interpolation internally, but only once)
         XT[i, :] = np.interp(En_mev, EnergyMEV, xt).astype(np.float32)
 
     return XT
