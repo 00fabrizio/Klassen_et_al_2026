@@ -58,7 +58,7 @@ ROWS = [
         (r'$m$', '--', 'n'),
     ]),
     ('Cascade', [
-        (r'$A_{\mathrm{cas}}$', r'$\mathrm{cm^{-3}\,GeV^{-1}}$', 'A1'),
+        (r'$A_{\mathrm{cas}}$', r'$\mathrm{cm^{-3}\,GeV^{-1}\,primary^{-1}}$', 'A1'),
         (r'$\gamma_{\mathrm{cas}}$', '--', 'gamma1'),
         (r'$\Sigma$', r'$\mathrm{cm^{-1}}$', 'Sigma'),
         (r'$n_{\mathrm{ang}}$', '--', 'n_ang'),
@@ -67,7 +67,7 @@ ROWS = [
         (r'$w_{\mathrm{cas}}$', '--', 'w_c'),
     ]),
     ('Evaporation', [
-        (r'$A_{\mathrm{ev}}$', r'$\mathrm{cm^{-3}\,GeV^{-1}}$', 'A2'),
+        (r'$A_{\mathrm{ev}}$', r'$\mathrm{cm^{-3}\,GeV^{-1}\,primary^{-1}}$', 'A2'),
         (r'$\gamma_{\mathrm{ev}}$', '--', 'gamma2'),
         (r'$d_{\mathrm{ev}}$', '--', 'd2'),
         (r'$\kappa_{\mathrm{ev}}$', r'$\mathrm{cm^{-1}}$', 'kappa_ev'),
@@ -75,11 +75,11 @@ ROWS = [
 
     ('Epithermal', [
         (r'$\kappa_{\mathrm{slow}}$', r'$\mathrm{cm^{-1}}$', 'kappa_slow'),
-        (r'$A_{\mathrm{ep}}$', r'$\mathrm{cm^{-5}}$', 'A3'),
+        (r'$A_{\mathrm{ep}}$', r'$\mathrm{cm^{-5}\,primary^{-1}}$', 'A3'),
         (r'$\gamma_{\mathrm{ep}}$', '--', 'gamma3'),
     ]),
     ('Thermal', [
-        (r'$A_{\mathrm{th}}$', r'$\mathrm{cm^{-5}\,GeV^{-2}}$', 'A4'),
+        (r'$A_{\mathrm{th}}$', r'$\mathrm{cm^{-5}\,GeV^{-2}\,primary^{-1}}$', 'A4'),
         (r'$\gamma_{\mathrm{th}}$', '--', 'gamma4'),
     ]),
 ]
