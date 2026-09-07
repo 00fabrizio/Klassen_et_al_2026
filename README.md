@@ -5,9 +5,8 @@ energy fluence of secondary neutrons produced by proton and carbon-ion beams in 
 water phantom, fitted to FLUKA Monte Carlo data.
 
 The model gives the neutron spectral energy fluence
-`E_n dPhi/dE_n (z, rho, E_n; E_0)` as a saturation prefactor in the primary
-energy times a sum over four regimes — cascade, evaporation, epithermal and
-thermal — each a spatial factor multiplied by an energy spectrum.
+`E_n dPhi/dE_n (z, rho, E_n; E_0)` as a sum over four regimes — cascade, evaporation, epithermal and
+thermal, each modelled as a spatial factor multiplied by an energy spectrum.
 
 ## Install
 
@@ -17,8 +16,7 @@ cd Klassen_et_al_2026
 pip install -r requirements.txt
 ```
 
-The cascade kernel table is 306 MB, above GitHub's file limit, so it ships as a
-build step rather than a file. It takes about 20 minutes:
+The cascade kernel table takes about 20 minutes
 
 ```bash
 python -m toolbox.diffusion_integrals.precompute_cascade
