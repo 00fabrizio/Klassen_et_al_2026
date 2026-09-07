@@ -9,6 +9,8 @@ authors:
     family-names: Klassen
     email: fabrizio.klassen00@gmail.com
 license: MIT
+doi: 10.5281/zenodo.22650411
+version: v1.0.0
 repository-code: https://github.com/00fabrizio/Klassen_et_al_2026
 preferred-citation:
   type: article
