@@ -1,6 +1,6 @@
 # Analytical model for secondary neutron fluence in particle therapy
 
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.22650411.svg)](https://doi.org/10.5281/zenodo.22650411)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.22650366.svg)](https://doi.org/10.5281/zenodo.22650366)
 
 Code and data for **Klassen et al. (2026)**, an analytical model of the spectral
 energy fluence of secondary neutrons produced by proton and carbon-ion beams in a
