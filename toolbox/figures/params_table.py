@@ -100,7 +100,7 @@ def existing_caption(path):
 path = os.path.join(OUT, 'params.tex')
 
 L = [
-    r'\begin{table}[t]',
+    r'\begin{table}[!ht]',
     r'\centering',
 
     r'\setlength{\belowcaptionskip}{6pt}',
