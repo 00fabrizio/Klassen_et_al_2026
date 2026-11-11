@@ -51,6 +51,10 @@ c = {k: float(v) for k, v in C.items()}
 p['n_ang'] = p['n_ang']
 c['n_ang'] = float(theta_to_n(c['theta_bar']))
 
+THERMAL_SCALE = 1e15
+for d in (p, c):
+    d['A4_ms'] = d['A4'] * THERMAL_SCALE
+
 ROWS = [
     ('Global', [
 
@@ -58,7 +62,7 @@ ROWS = [
         (r'$m$', '--', 'n'),
     ]),
     ('Cascade', [
-        (r'$A_{\mathrm{cas}}$', r'$\mathrm{cm^{-3}\,GeV^{-1}\,primary^{-1}}$', 'A1'),
+        (r'$A_{\mathrm{cas}}$', r'$\mathrm{cm^{-3}\,primary^{-1}}$', 'A1'),
         (r'$\gamma_{\mathrm{cas}}$', '--', 'gamma1'),
         (r'$\Sigma$', r'$\mathrm{cm^{-1}}$', 'Sigma'),
         (r'$n_{\mathrm{ang}}$', '--', 'n_ang'),
@@ -67,7 +71,7 @@ ROWS = [
         (r'$w_{\mathrm{cas}}$', '--', 'w_c'),
     ]),
     ('Evaporation', [
-        (r'$A_{\mathrm{ev}}$', r'$\mathrm{cm^{-3}\,GeV^{-1}\,primary^{-1}}$', 'A2'),
+        (r'$A_{\mathrm{ev}}$', r'$\mathrm{cm^{-3}\,primary^{-1}}$', 'A2'),
         (r'$\gamma_{\mathrm{ev}}$', '--', 'gamma2'),
         (r'$d_{\mathrm{ev}}$', '--', 'd2'),
         (r'$\kappa_{\mathrm{ev}}$', r'$\mathrm{cm^{-1}}$', 'kappa_ev'),
@@ -79,7 +83,7 @@ ROWS = [
         (r'$\gamma_{\mathrm{ep}}$', '--', 'gamma3'),
     ]),
     ('Thermal', [
-        (r'$A_{\mathrm{th}}$', r'$\mathrm{cm^{-5}\,GeV^{-2}\,primary^{-1}}$', 'A4'),
+        (r'$A_{\mathrm{th}}$', r'$\mathrm{cm^{-5}\,GeV^{-2}\,primary^{-1}}$', 'A4_ms'),
         (r'$\gamma_{\mathrm{th}}$', '--', 'gamma4'),
     ]),
 ]
