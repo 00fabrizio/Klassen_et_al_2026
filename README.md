@@ -143,6 +143,27 @@ python -m fitting.evaluate --species proton \
 
 The environment is `requirements.txt` (Python 3.12, NumPy 2.5.4, SciPy 1.18.1).
 
+## Performance
+
+Volume-weighted bias of total fluence (Eq. 10, `Delta_Phi`) and kerma (`Delta_K`)
+against FLUKA over the full 5.5 cm radius, as |bias| in %. "Fitted" are the 10
+training energies, "holdout" the 40 energies that entered neither fit. The
+training range spans the whole simulated range (the lowest and highest energies
+are training energies), so every holdout energy lies inside it.
+`python toolbox/figures/volume_weighted_difference.py` prints this table.
+
+| species | set | n | mean / median / max `Delta_Phi` | mean / median / max `Delta_K` |
+|---|---|---|---|---|
+| proton | all | 50 | 11.90 / 6.89 / 35.80 | 4.14 / 3.59 / 24.55 |
+| proton | fitted | 10 | 12.44 / 7.48 / 33.14 | 5.57 / 3.44 / 24.55 |
+| proton | holdout | 40 | 11.77 / 6.89 / 35.80 | 3.78 / 3.65 / 12.78 |
+| carbon | all | 50 | 8.78 / 9.28 / 13.31 | 8.65 / 9.16 / 16.48 |
+| carbon | fitted | 10 | 8.24 / 8.32 / 13.26 | 9.10 / 9.21 / 16.48 |
+| carbon | holdout | 40 | 8.92 / 9.56 / 13.31 | 8.53 / 9.16 / 11.46 |
+
+No energy is outside +-40 % for either species. Validation is against the same
+Monte Carlo code (FLUKA) only.
+
 ## Data
 
 `data/proton/` and `data/carbon/` hold the raw FLUKA output, one directory per
