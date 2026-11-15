@@ -4,8 +4,8 @@ and cheap cross-checks at the point estimate (T35, R2-M4).
 Why an energy bootstrap. The fit is unweighted least squares on E dPhi/dE and the
 residuals are dominated by model inadequacy, not by FLUKA counting noise (`checks`
 reports chi2/dof with the corrected statistical errors); the bins of one energy
-share the same primaries and are strongly correlated, and 11-23 % of the bins are
-empty (no defined error). The error-weighted covariance therefore cannot set the
+share the same primaries and are strongly correlated, and empty bins (carbon 3.6 %) are
+without a defined error. The error-weighted covariance therefore cannot set the
 parameter uncertainty. What does vary between plausible training sets is the choice
 of primary energies: each replicate draws 10 energies with replacement from the 10
 training energies (multinomial counts, applied as --energy-weights) and refits with
@@ -139,6 +139,11 @@ def cmd_summarize(a):
     d = rep_dir(species, a.out_dir)
     df = collect(species, d)
     pt = F.read_params(a.p0, species)
+    n_finished = len(df)
+    if a.use:
+        # replicates beyond B that happened to finish before the workers were
+        # stopped are not used: the first `use` completed ones by rep number
+        df = df.iloc[:a.use].reset_index(drop=True)
     n_all = len(df)
     good = df[df.ok & df.converged]
     nf, nn = int((~df.ok).sum()), int((df.ok & ~df.converged).sum())
@@ -151,6 +156,12 @@ def cmd_summarize(a):
     df2 = df.copy()
     df2['counts'] = df2['counts'].apply(lambda c: ' '.join(str(x) for x in c))
     df2[[c for c in cols if c in df2]].to_csv(f'{out_dir}/replicates.csv', index=False)
+    used = pd.DataFrame(dict(rep=df.rep, seed=a.seed))
+    for j, i in enumerate(C.TRAIN_IDX):
+        used[f'count_E{int(i)}'] = df.counts.apply(lambda c: int(c[j]))
+    used['ok'] = df.ok
+    used['converged'] = df.converged
+    used.to_csv(f'{out_dir}/replicates_used.csv', index=False)
 
     rows = []
     for k in free:
@@ -181,7 +192,8 @@ def cmd_summarize(a):
         f'{out_dir}/correlation_flagged.csv', index=False)
     heatmap(R, var, f'{out_dir}/correlation.png', f'{species}: bootstrap correlation '
             f'(B={len(good)})')
-    meta = dict(species=species, B_requested=a.B, n_replicates=n_all,
+    meta = dict(species=species, B_requested=a.B, n_finished_on_disk=n_finished,
+                n_replicates=n_all,
                 n_converged=len(good), n_nonconverged=nn, n_failed=nf,
                 nonconverged_reps=df[df.ok & ~df.converged].rep.tolist(),
                 failed_reps=df[~df.ok].rep.tolist(),
@@ -414,6 +426,8 @@ def main(argv=None):
         p.add_argument('--summary-dir', help='default fitting/results/bootstrap_<species>')
         p.add_argument('-B', type=int, default=200)
         p.add_argument('--seed', type=int, default=35)
+        p.add_argument('--use', type=int, help='summarize: use the first N completed '
+                       'replicates by rep number')
         p.add_argument('--worker', type=int, default=0)
         p.add_argument('--nworkers', type=int, default=1)
         p.add_argument('--retry-failed', action='store_true')
