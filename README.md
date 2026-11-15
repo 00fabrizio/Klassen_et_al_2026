@@ -66,6 +66,7 @@ files. `*_mc.npy` holds `E_n dPhi/dE_n`, not `dPhi/dE_n`.
 ```
 model.py                        the model: four regimes, prefactor, two entry points
 fitting_params/                 fitted parameters, one CSV per species
+fitting/                        fit configuration, fit and evaluation routines, refit results
 sample_usage.ipynb              worked example
 
 toolbox/
@@ -105,6 +106,43 @@ TABLES_DIR=tables  python toolbox/figures/params_table.py
 
 These need `npy_data/`. `toolbox/metrics/bias_curves.py` computes the
 volume-weighted bias of total fluence and kerma against the MC data.
+
+## Fitting
+
+`fitting/` refits the 19 parameters of one species against `npy_data/`. All
+settings live in [`fitting/config.py`](fitting/config.py): training energies,
+grid thinning, starting values, bounds, held parameters with the reason for
+each, and optimiser settings.
+
+```bash
+python -m fitting.fit --species proton --start all --out fitting/results/proton_refit.csv
+python -m fitting.fit --species carbon --start all --out fitting/results/carbon_refit.csv
+python -m fitting.evaluate --species proton \
+    --set production=fitting_params/params_proton.csv \
+    --set refit=fitting/results/proton_refit.csv --maps
+```
+
+- **Data.** 10 of the 50 primary energies (indices 0, 5, 10, 16, 21, 27, 32,
+  38, 43, 49); the other 40 are held out. Every second depth, radius (full
+  0–5.5 cm) and neutron-energy bin: 805,000 points per species.
+- **Stage 1.** Unweighted least squares on `E dPhi/dE`, all parameters except
+  `Epk` (held at 4 MeV) fitted jointly with `scipy.optimize.least_squares`,
+  `method='trf'`, 2-point Jacobian, `ftol = xtol = gtol = 1e-12`,
+  `max_nfev = 20000` (this is what `curve_fit(..., method='trf')` runs). Two
+  starts per species, the lowest cost wins.
+- **Stage 2.** `(A3, gamma3)` refitted against the 1 eV bin ± 10 bins, which
+  stage 1 barely constrains: `A3` in closed form for each `gamma3` on a 90-point
+  geometric grid in [0.15, 20].
+- **Output.** `<out>.csv` in the layout of `fitting_params/`, and `<out>.json`
+  with costs, function evaluations, status, parameters on a bound, wall time,
+  Python/NumPy/SciPy versions and the git hash.
+- **Bootstrap.** `--energy-weights 2,0,1,...` gives each energy of the set an
+  integer multiplicity, applied as a weight `sqrt(count)` on its residuals
+  (the same objective as repeating it; not an MC-uncertainty weighting).
+  `--p0 <csv>` warm-starts. From Python: `fitting.fit.run(species,
+  counts={index: count}, p0=path_or_dict)`.
+
+The environment is `requirements.txt` (Python 3.12, NumPy 2.5.4, SciPy 1.18.1).
 
 ## Data
 
