@@ -1,4 +1,11 @@
-numpy
-scipy
-pandas
-matplotlib
+# Pinned environment for the analytical-neutrons code (Python 3.12).
+# Set up: python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
+# Built 2026-11-15; reproduces the published Fig. 7 metrics and the
+# spectral_fluence_comp core ratios. The versions used for the original
+# fits are not recorded (task T46).
+numpy==2.5.4
+scipy==1.18.1
+pandas==3.1.1
+matplotlib==3.11.2
+seaborn==0.13.2
+ipykernel==7.4.0
