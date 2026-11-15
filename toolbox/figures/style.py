@@ -70,10 +70,11 @@ def two_panel():
     return fig, fig.add_subplot(gs[0, 0]), fig.add_subplot(gs[0, 2])
 
 
-def top_legend(fig, ax, ncol):
+def top_legend(fig, ax, ncol, **kw):
+    """Legend in a band above the panels; `kw` goes to `fig.legend`."""
     h, l = ax.get_legend_handles_labels()
     fig.legend(h, l, loc='upper center', ncol=ncol, frameon=False,
-               bbox_to_anchor=(0.5, 1.0))
+               bbox_to_anchor=(0.5, 1.0), **kw)
     fig.subplots_adjust(**MARGINS)
 
 

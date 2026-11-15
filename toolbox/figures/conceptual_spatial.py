@@ -50,6 +50,17 @@ CUT_R = {k: np.nan_to_num(v, nan=0.0, posinf=0.0, neginf=0.0) for k, v in CUT_R.
 
 norm = lambda a: a / a.max() if a.max() > 0 else a
 
+# Line styles keep the three regimes apart in black and white (R1-13): solid,
+# dashed, dotted. The dotted curve is drawn slightly heavier so its dots read at
+# print size, and the P / R reference lines are a thin grey dash-dot so they are
+# not mistaken for it.
+LINESTYLE = {
+    'cas':  dict(ls='-'),
+    'ev':   dict(ls=(0, (6, 3))),
+    'slow': dict(ls=(0, (1, 1.6)), lw=2.8),
+}
+REF_LINE = dict(color='0.35', ls=(0, (8, 3, 1.5, 3)), lw=1.3)
+
 CURVES = [
     ('cas',  style.CAS,
      rf'Cascade ($\Sigma={SIGMA}\,\mathrm{{cm^{{-1}}}},\ '
@@ -64,12 +75,12 @@ CURVES = [
 fig, ax_z, ax_r = style.two_panel()
 
 for key, col, lab in CURVES:
-    ax_z.plot(z, norm(CUT_Z[key]), color=col, label=lab)
-    ax_r.plot(rho, norm(CUT_R[key]), color=col)
+    ax_z.plot(z, norm(CUT_Z[key]), color=col, label=lab, **LINESTYLE[key])
+    ax_r.plot(rho, norm(CUT_R[key]), color=col, **LINESTYLE[key])
 
 for ax, xv, txt, xmax, step in ((ax_z, P, r'$P$', L, 5),
                                 (ax_r, R, r'$R$', RHO_MAX, 1.0)):
-    ax.axvline(xv, color='k', ls=':', lw=2.2)
+    ax.axvline(xv, **REF_LINE)
     ax.text(xv - 0.012 * xmax, 0.055, txt, ha='right', va='center',
             fontsize=style.annot_size())
     ax.xaxis.set_major_locator(MultipleLocator(step))
@@ -84,7 +95,11 @@ ax_z.set_ylabel(r'relative spectral fluence (a.u.)')
 ax_r.set_title(r'$\rho$ dependence ($z=P$)', pad=8)
 ax_r.set_xlabel(r'$\rho$ (cm)')
 
-style.top_legend(fig, ax_z, ncol=3)
+# One row. At the shared legend size (21) these labels overflow the canvas under
+# matplotlib 3.11, so the legend is set one point smaller with shorter handles
+# and tighter spacing: 95 % of the canvas width.
+style.top_legend(fig, ax_z, ncol=3, fontsize=style.SIZES['legend_fontsize'] - 1,
+                 handlelength=2.4, columnspacing=1.2, handletextpad=0.5)
 
 style.save(fig, 'conceptual_spatial', OUT)
 print(f'wrote conceptual_spatial.pdf / .png to {OUT}')
