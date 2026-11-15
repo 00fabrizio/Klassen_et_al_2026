@@ -1,18 +1,20 @@
 """Neutron fluence-to-kerma conversion coefficients for water.
 
-Three pieces, in MeV and fGy m^2 (returned as pGy cm^2, a factor 10):
+Four pieces, in MeV and fGy m^2 (returned as pGy cm^2, a factor 10), joined by
+log-log interpolation:
 
-- E within the ICRU Report 63 table: log-log interpolation of the 59 ICRU 63
-  water points, digitised from Shrestha et al. 2022 (PMB 67 125019) Fig. 3
-  (``icru63_water_digitised.txt``, about +-3 % per point). The last point
-  (148.3 MeV as digitised) is ICRU 63's 150 MeV point.
-- E above the last point: Shrestha et al. 2022 Eq. 5 high-energy term,
-  u E^2 + v.
-- E below the first point (2.56e-8 MeV): Shrestha's a1 cosh(log10 E).
+- 11 eV to 150 MeV: ICRU Report 63 (1999), Table C.3, water column
+  (``icru63_table_c3_water.txt``, transcribed from the report).
+- 0.0256 eV to 11 eV: ICRU 63 water points digitised from Shrestha et al. 2022
+  (PMB 67 125019) Fig. 3 (``icru63_water_digitised.txt``, about +-3 % per
+  point); Table C.3 starts at 11 eV. In the table's range the digitised points
+  agree with it to 0.7 % mean, 3.5 % max.
+- Above 150 MeV: Shrestha et al. 2022 Eq. 5 high-energy term, u E^2 + v.
+- Below 0.0256 eV: Shrestha's a1 cosh(log10 E).
 
 Shrestha's log-normal term (b1, mu1, sigma1 in their Table 1) is not used: the
-printed water values do not reproduce their own Fig. 3 (125 % mean deviation
-from ICRU 63). a1, u and v do. Revision 1, task T20.
+printed water values do not reproduce their own Fig. 3. a1, u and v do.
+Revision 1, task T20.
 """
 import os
 
@@ -22,8 +24,10 @@ A_1 = 4.65e-07
 U = 2.377e-04
 V = 7.402
 
-_ICRU = np.loadtxt(os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                                'icru63_water_digitised.txt'))
+_HERE = os.path.dirname(os.path.abspath(__file__))
+_TABLE = np.loadtxt(os.path.join(_HERE, 'icru63_table_c3_water.txt'))
+_DIGIT = np.loadtxt(os.path.join(_HERE, 'icru63_water_digitised.txt'))
+_ICRU = np.vstack([_DIGIT[_DIGIT[:, 0] < _TABLE[0, 0]], _TABLE])
 _LOG_E = np.log(_ICRU[:, 0])
 _LOG_K = np.log(_ICRU[:, 1])
 E_MIN_MEV = float(_ICRU[0, 0])

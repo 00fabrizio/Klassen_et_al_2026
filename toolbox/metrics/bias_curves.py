@@ -80,7 +80,8 @@ def bias_curves(species, param_file=None, nr=55, workers=None, cache=True):
 
     # The kerma coefficients enter dK, so their source and data are part of the key.
     kerma = hashlib.md5()
-    for f in ('kerma_coeffs.py', 'icru63_water_digitised.txt'):
+    for f in ('kerma_coeffs.py', 'icru63_water_digitised.txt',
+              'icru63_table_c3_water.txt'):
         with open(os.path.join(_ROOT, 'toolbox', 'metrics', f), 'rb') as fh:
             kerma.update(fh.read())
 
