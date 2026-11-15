@@ -78,9 +78,15 @@ def bias_curves(species, param_file=None, nr=55, workers=None, cache=True):
         st = os.stat(f)
         tabs.append(f'{os.path.basename(f)}:{st.st_size}:{st.st_mtime_ns}')
 
+    # The kerma coefficients enter dK, so their source and data are part of the key.
+    kerma = hashlib.md5()
+    for f in ('kerma_coeffs.py', 'icru63_water_digitised.txt'):
+        with open(os.path.join(_ROOT, 'toolbox', 'metrics', f), 'rb') as fh:
+            kerma.update(fh.read())
+
     key = hashlib.md5(
         f'{species}|{nr}|{entry}|{"|".join(repr(v) for v in vals)}|'
-        f'{"|".join(tabs)}'.encode()).hexdigest()[:16]
+        f'{"|".join(tabs)}|{kerma.hexdigest()}'.encode()).hexdigest()[:16]
     path = os.path.join(_CACHE, f'{species}_{key}.npz')
     if cache and os.path.exists(path):
         d = np.load(path)
