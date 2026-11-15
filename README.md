@@ -118,8 +118,7 @@ each, and optimiser settings.
 python -m fitting.fit --species proton --start all --out fitting/results/proton_refit.csv
 python -m fitting.fit --species carbon --start all --out fitting/results/carbon_refit.csv
 python -m fitting.evaluate --species proton \
-    --set production=fitting_params/params_proton.csv \
-    --set refit=fitting/results/proton_refit.csv --maps
+    --set adopted=fitting_params/params_proton.csv --maps
 ```
 
 - **Data.** 10 of the 50 primary energies (indices 0, 5, 10, 16, 21, 27, 32,
