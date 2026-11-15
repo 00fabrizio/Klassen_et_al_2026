@@ -1,0 +1,8 @@
+           set    split | dPhi mean  median     max >40% |  dK mean  median     max >40%
+    unweighted      all |     11.90    6.89   35.80    0 |     4.14    3.59   24.55    0
+    unweighted    train |     12.44    7.48   33.14    0 |     5.57    3.44   24.55    0
+    unweighted  holdout |     11.77    6.89   35.80    0 |     3.78    3.65   12.78    0
+          stat      all |     31.82   13.63   93.53   14 |    23.29   11.83   88.35   11
+          stat    train |     34.43   15.12   93.53    3 |    26.46   13.33   88.35    3
+          stat  holdout |     31.17   13.63   91.77   11 |    22.49   11.18   85.82    8
+exit 0

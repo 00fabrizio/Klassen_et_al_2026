@@ -1,0 +1,23 @@
+carbon start fitting_params/params_carbon.csv: stage-1 cost 1.16675e+09 -> 2.05018e+07, nfev 57, status 3, 14.3 min, rails []
+  weighted: chi2/dof 3006 -> 52.82, dof 776352, dropped 28630/805000: {'thermal': {'total': 186760, 'dropped': 18927}, 'epithermal': {'total': 373520, 'dropped': 2171}, 'evaporation': {'total': 141680, 'dropped': 199}, 'cascade': {'total': 103040, 'dropped': 7333}}
+  A1                3.21777 ->        1.35131
+  gamma1           0.903585 ->        1.02314
+  Sigma                   0 ->     0.00439401
+  theta_bar         16.3077 ->        22.8736
+  d1             -0.0505519 ->      -0.217137
+  a                0.952823 ->       0.857242
+  w_c              0.195026 ->       0.312736
+  A2             0.00968274 ->     0.00227387
+  gamma2            1.29622 ->        1.47129
+  d2              -0.642482 ->      -0.311347
+  kappa_ev          0.18054 ->      0.0386755
+  Epk                 0.004 ->          0.004
+  A3            3.23128e-05 ->    4.24148e-05
+  gamma3             1.7803 ->        1.78032
+  A4                2498.63 ->        775.825
+  gamma4            1.78558 ->       0.961116
+  kappa_slow       0.126472 ->        0.15572
+  E_th              194.889 ->        167.316
+  n                0.963881 ->        2.49892
+wrote fitting/results/weighted/carbon_floor05.csv
+exit 0

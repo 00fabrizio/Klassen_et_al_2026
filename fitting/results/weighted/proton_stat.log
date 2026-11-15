@@ -1,0 +1,22 @@
+proton start fitting/results/proton_refit.csv: stage-1 cost 1.31153e+09 -> 1.34778e+08, nfev 48, status 3, 14.6 min, rails []
+  weighted: chi2/dof 3937 -> 404.6, dof 666197, dropped 138785/805000: {'thermal': {'total': 186760, 'dropped': 42278}, 'epithermal': {'total': 373520, 'dropped': 34517}, 'evaporation': {'total': 141680, 'dropped': 5516}, 'cascade': {'total': 103040, 'dropped': 56474}}
+  A1              0.0325407 ->      0.0257926
+  gamma1           0.832883 ->       0.906807
+  Sigma         3.43276e-43 ->      0.0264924
+  n_ang             5.04465 ->        3.33943
+  d1              -0.242334 ->      -0.224021
+  a                0.721543 ->       0.616996
+  w_c               0.12247 ->       0.131031
+  A2             0.00121665 ->    0.000756796
+  gamma2            1.01674 ->       0.988159
+  d2              -0.276819 ->      -0.344584
+  kappa_ev         0.365476 ->       0.241334
+  Epk                 0.004 ->          0.004
+  A3            6.68582e-06 ->    5.70335e-06
+  gamma3           0.972446 ->       0.972446
+  A4                388.694 ->        189.307
+  gamma4            1.06715 ->        1.20237
+  kappa_slow       0.174807 ->       0.158905
+  E_th              102.226 ->        114.127
+  n                 2.33413 ->         5.0986
+wrote fitting/results/weighted/proton_stat.csv

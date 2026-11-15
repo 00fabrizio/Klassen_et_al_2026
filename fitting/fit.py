@@ -22,6 +22,19 @@ From Python:
     res = run('proton', counts={0: 2, 10: 1, ...}, p0='fitting/results/x.csv')
     res['params']          # dict, the 19 values in CSV column order
 
+Opt-in, off by default (one-off experiment, T35 / R2-M4; the repo rule against
+MC-uncertainty weights stands):
+
+    python -m fitting.fit --species proton --p0 fitting_params/params_proton.csv \
+        --weighting stat+floor:0.05+maxrel:0.5 --out ...
+
+--weighting sets sigma per point = sqrt((relerr*mc)^2 + (f*mc)^2) from
+npy_data/{species}_relerr.npy ('stat' alone is f = 0). Points with zero MC, a
+non-finite relative error (empty bin, or an energy without error information) or
+relerr = 0 are dropped from the fit, as are points with relerr > r when
+'maxrel:r' is given. Multiplicities combine as sigma / sqrt(count). The same
+sigma is used in stage 2.
+
 Writes <out>.csv in the layout of fitting_params/params_{species}.csv and
 <out>.json with the metadata (costs, nfev, status, rails, wall time, versions,
 git hash, energies and their weights, held parameters, starting values).
@@ -77,6 +90,53 @@ def _grid(thin_z, thin_rho, en_slice):
     return z, rho, en
 
 
+def parse_weighting(spec):
+    """None, or dict(floor=f, maxrel=r|None) from 'stat[+floor:f][+maxrel:r]'."""
+    if not spec or spec == 'none':
+        return None
+    parts = spec.split('+')
+    if parts[0] != 'stat':
+        raise ValueError(f"--weighting must start with 'stat': {spec!r}")
+    out = dict(floor=0.0, maxrel=None, spec=spec)
+    for p in parts[1:]:
+        k, _, v = p.partition(':')
+        if k not in ('floor', 'maxrel') or not v:
+            raise ValueError(f'unknown weighting term {p!r}')
+        out[k] = float(v)
+    return out
+
+
+def point_weights(species, idx, mc_slices, MC, En, weighting):
+    """sqrt-weight 1/sigma per point (0 for excluded points) and a drop report.
+
+    sigma = mc * sqrt(relerr^2 + floor^2). Excluded: mc <= 0, relerr not finite
+    (empty bin or an energy without error information), sigma = 0, relerr above
+    `maxrel`. The report counts exclusions per band (by lower bin edge, bands as
+    in toolbox/metrics/mc_stats.py) and per primary energy.
+    """
+    rel = np.load(f'{ROOT}/npy_data/{species}_relerr.npy', mmap_mode='r')
+    REL = np.concatenate([np.asarray(rel[i][mc_slices], dtype=float).ravel()
+                          for i in idx])
+    sig = MC * np.sqrt(REL ** 2 + weighting['floor'] ** 2)
+    ok = (MC > 0) & np.isfinite(REL) & (sig > 0)
+    if weighting['maxrel'] is not None:
+        ok &= REL <= weighting['maxrel']
+    inv = np.zeros(MC.size)
+    inv[ok] = 1.0 / sig[ok]
+    edges = (1e-10, 1e-4, 2e-2)
+    band = np.digitize(En, edges)
+    names = ('thermal', 'epithermal', 'evaporation', 'cascade')
+    rep = dict(n_total=int(MC.size), n_used=int(ok.sum()),
+               n_dropped=int((~ok).sum()),
+               dropped_zero_mc=int((MC <= 0).sum()),
+               dropped_nonfinite_err=int(((MC > 0) & ~np.isfinite(REL)).sum()),
+               per_band={n: dict(total=int((band == b).sum()),
+                                 dropped=int(((band == b) & ~ok).sum()))
+                         for b, n in enumerate(names)},
+               floor=weighting['floor'], maxrel=weighting['maxrel'])
+    return inv, ok, rep
+
+
 def _problem(species, idx, z, rho, en, mc_slices):
     """Model, X tuple and MC vector for energies idx on the given grid."""
     Ep = energies(species)[idx]
@@ -120,7 +180,8 @@ def _rails(names, vals, bounds):
 
 # ---------------------------------------------------------------- stages
 
-def stage1(species, p0, counts, free, max_nfev=None, verbose=0):
+def stage1(species, p0, counts, free, max_nfev=None, verbose=0,
+           weighting=None):
     """Joint curve_fit of the parameters in `free`; the rest held at p0."""
     names = C.PARAMS[species]
     bounds = C.SPECIES[species]['bounds']
@@ -136,6 +197,13 @@ def stage1(species, p0, counts, free, max_nfev=None, verbose=0):
     # an MC-uncertainty weighting (which is not used, see CLAUDE.md); with every
     # count 1 the fit is the plain unweighted least squares.
     sigma = None if np.all(w == 1) else 1.0 / np.sqrt(w)
+    wrep = None
+    if weighting is not None:       # opt-in MC-error weighting (see docstring)
+        inv, ok, wrep = point_weights(
+            species, idx, (slice(None, None, C.THIN['z']),
+                           slice(None, None, C.THIN['rho']),
+                           slice(None, None, C.THIN['en'])), MC, X[2], weighting)
+        sigma = None
 
     full = dict(p0)
     fi = [names.index(k) for k in free]
@@ -154,6 +222,8 @@ def stage1(species, p0, counts, free, max_nfev=None, verbose=0):
     if max_nfev:
         opt['max_nfev'] = int(max_nfev)
     sw = 1.0 if sigma is None else 1.0 / sigma
+    if wrep is not None:
+        sw = inv * np.sqrt(w)
 
     def resid(v):
         return sw * (f(X, *v) - MC)
@@ -174,10 +244,16 @@ def stage1(species, p0, counts, free, max_nfev=None, verbose=0):
                      njev=int(r.njev), status=int(r.status),
                      success=bool(r.success), message=str(r.message),
                      wall_s=wall, n_points=int(MC.size),
-                     rails=_rails(free, r.x, bounds)), (M, X, MC, w, entry)
+                     rails=_rails(free, r.x, bounds),
+                     **({} if wrep is None else dict(
+                         weighting=wrep,
+                         dof=wrep['n_used'] - len(free),
+                         chi2_dof_start=2 * cost0 / (wrep['n_used'] - len(free)),
+                         chi2_dof=2 * float(r.cost) / (wrep['n_used'] - len(free)))
+                     )), (M, X, MC, w, entry)
 
 
-def stage2(species, params, counts):
+def stage2(species, params, counts, weighting=None):
     """(A3, gamma3) against the 1 eV band, closed-form A3 on a gamma3 grid."""
     s = C.STAGE2
     en_all = np.load(f'{ROOT}/npy_data/en_low.npy')
@@ -189,6 +265,12 @@ def stage2(species, params, counts):
                              (slice(None, None, s['thin_z']),
                               slice(None, None, s['thin_rho']), sl))
     w = np.repeat([counts[i] for i in idx], npt).astype(float)
+    if weighting is not None:       # w = count / sigma^2, excluded points 0
+        inv, _, _ = point_weights(
+            species, idx, (slice(None, None, s['thin_z']),
+                           slice(None, None, s['thin_rho']), sl),
+            MC, X[2], weighting)
+        w = w * inv ** 2
     names = C.PARAMS[species]
     entry = getattr(M, C.ENTRY[species])
     q = dict(params, A3=0.0)
@@ -244,13 +326,14 @@ def resolve_p0(species, p0=None, start=0):
 
 
 def run(species, counts=None, p0=None, start=0, hold=None, free=None,
-        do_stage2=True, max_nfev=None, verbose=0):
+        do_stage2=True, max_nfev=None, verbose=0, weighting=None):
     """Run the full pipeline once. Returns a dict (see module docstring).
 
     counts   {energy index: multiplicity}; default the 10 training energies.
     p0       None (config start `start`), a CSV path, or a dict of 19 values.
     hold     {name: (value, reason)} replacing the config holds; held values
              override p0.
+    weighting  None (default, unweighted) or a parse_weighting() dict.
     free     explicit list of free parameters (all others held at p0); for
              reproduction runs such as freeing only A3, A4.
     """
@@ -263,11 +346,12 @@ def run(species, counts=None, p0=None, start=0, hold=None, free=None,
     if free is None:
         free = [k for k in names if k not in hold]
     t0 = time.time()
-    p1, info1, _ = stage1(species, p0d, counts, free, max_nfev, verbose)
+    p1, info1, _ = stage1(species, p0d, counts, free, max_nfev, verbose,
+                          weighting)
     res = dict(species=species, params=p1, params_stage1=dict(p1),
                stage1=info1, stage2=None)
     if do_stage2 and 'A3' in free and 'gamma3' in free:
-        p2, info2 = stage2(species, p1, counts)
+        p2, info2 = stage2(species, p1, counts, weighting)
         res['params'] = p2
         res['stage2'] = info2
     Ep = energies(species)
@@ -284,6 +368,7 @@ def run(species, counts=None, p0=None, start=0, hold=None, free=None,
         optimizer=dict(C.OPTIMIZER, **({'max_nfev': int(max_nfev)} if max_nfev else {})),
         bounds={k: list(C.SPECIES[species]['bounds'][k]) for k in free},
         thinning=dict(C.THIN), environment=environment(),
+        weighting=weighting,
     )
     return res
 
@@ -329,6 +414,9 @@ def main(argv=None):
                          'energy of the set (bootstrap); 0 drops an energy')
     ap.add_argument('--free', help='comma-separated free parameters; all '
                                    'others held at p0 (reproduction runs)')
+    ap.add_argument('--weighting', default='none',
+                    help="opt-in MC-error weights: 'stat', 'stat+floor:0.05', "
+                         "'stat+maxrel:0.5' (combinable); default none")
     ap.add_argument('--no-stage2', action='store_true')
     ap.add_argument('--max-nfev', type=int)
     ap.add_argument('--verbose', type=int, default=0)
@@ -343,12 +431,17 @@ def main(argv=None):
     for s in starts:
         res = run(a.species, counts=counts, p0=a.p0, start=s or 0, free=free,
                   do_stage2=not a.no_stage2, max_nfev=a.max_nfev,
-                  verbose=a.verbose)
+                  verbose=a.verbose, weighting=parse_weighting(a.weighting))
         st = res['stage1']
         print(f'{a.species} start {res["p0_source"]}: stage-1 cost '
               f'{st["cost_start"]:.6g} -> {st["cost"]:.6g}, nfev {st["nfev"]}, '
               f'status {st["status"]}, {res["wall_s"] / 60:.1f} min, '
               f'rails {res["rails"]}', flush=True)
+        if 'chi2_dof' in st:
+            print(f'  weighted: chi2/dof {st["chi2_dof_start"]:.4g} -> '
+                  f'{st["chi2_dof"]:.4g}, dof {st["dof"]}, dropped '
+                  f'{st["weighting"]["n_dropped"]}/{st["weighting"]["n_total"]}: '
+                  f'{st["weighting"]["per_band"]}', flush=True)
         if len(starts) > 1:
             save(res, os.path.splitext(a.out)[0] + f'_start{s}.csv')
         if best is None or st['cost'] < best['stage1']['cost']:

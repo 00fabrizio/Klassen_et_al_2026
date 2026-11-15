@@ -1,0 +1,5 @@
+           set    split | dPhi mean  median     max >40% |  dK mean  median     max >40%
+       floor10      all |     45.36   45.20   47.75   49 |    29.10   30.83   40.83    3
+       floor10    train |     44.77   45.11   47.75    9 |    28.97   30.53   40.83    1
+       floor10  holdout |     45.50   45.25   47.72   40 |    29.13   30.83   40.62    2
+exit 0

@@ -1,0 +1,23 @@
+carbon start fitting_params/params_carbon.csv: stage-1 cost 2.16028e+08 -> 8.25832e+07, nfev 22, status 2, 9.0 min, rails ['Sigma=1.48121e-38 at lower bound 0']
+  weighted: chi2/dof 590.6 -> 225.8, dof 731601, dropped 73381/805000: {'thermal': {'total': 186760, 'dropped': 48613}, 'epithermal': {'total': 373520, 'dropped': 13102}, 'evaporation': {'total': 141680, 'dropped': 1255}, 'cascade': {'total': 103040, 'dropped': 10411}}
+  A1                3.21777 ->       0.773509
+  gamma1           0.903585 ->        1.15018
+  Sigma                   0 ->    1.48121e-38
+  theta_bar         16.3077 ->        29.6877
+  d1             -0.0505519 ->      -0.291856
+  a                0.952823 ->       0.816664
+  w_c              0.195026 ->       0.323476
+  A2             0.00968274 ->     0.00264278
+  gamma2            1.29622 ->         1.1017
+  d2              -0.642482 ->      -0.378207
+  kappa_ev          0.18054 ->      0.0374054
+  Epk                 0.004 ->          0.004
+  A3            3.23128e-05 ->    2.96186e-05
+  gamma3             1.7803 ->        1.78032
+  A4                2498.63 ->        2011.68
+  gamma4            1.78558 ->        1.93139
+  kappa_slow       0.126472 ->       0.122987
+  E_th              194.889 ->        164.605
+  n                0.963881 ->         1.3058
+wrote fitting/results/weighted/carbon_maxrel50.csv
+exit 0

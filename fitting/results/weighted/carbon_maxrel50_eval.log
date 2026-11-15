@@ -1,0 +1,5 @@
+           set    split | dPhi mean  median     max >40% |  dK mean  median     max >40%
+      maxrel50      all |     11.72   10.53   18.21    0 |    17.12   18.83   21.73    0
+      maxrel50    train |     11.80   10.72   17.19    0 |    16.34   18.68   21.73    0
+      maxrel50  holdout |     11.69   10.53   18.21    0 |    17.32   18.83   21.54    0
+exit 0

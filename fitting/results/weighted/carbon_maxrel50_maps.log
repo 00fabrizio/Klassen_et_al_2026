@@ -1,0 +1,35 @@
+           set    split | dPhi mean  median     max >40% |  dK mean  median     max >40%
+    unweighted      all |      8.78    9.28   13.31    0 |     8.65    9.16   16.48    0
+    unweighted    train |      8.24    8.32   13.26    0 |     9.10    9.21   16.48    0
+    unweighted  holdout |      8.92    9.56   13.31    0 |     8.53    9.16   11.46    0
+      maxrel50      all |     11.72   10.53   18.21    0 |    17.12   18.83   21.73    0
+      maxrel50    train |     11.80   10.72   17.19    0 |    16.34   18.68   21.73    0
+      maxrel50  holdout |     11.69   10.53   18.21    0 |    17.32   18.83   21.54    0
+wrote fitting/results/weighted/maps_carbon_maxrel50/carbon_maps_E0idx00.png
+wrote fitting/results/weighted/maps_carbon_maxrel50/carbon_maps_E0idx24.png
+wrote fitting/results/weighted/maps_carbon_maxrel50/carbon_maps_E0idx49.png
+   core AM/MC unweighted|E0=100.1|En=25 meV                 0.36
+   core AM/MC unweighted|E0=100.1|En=1 eV                   0.36
+   core AM/MC unweighted|E0=100.1|En=0.96 MeV               0.76
+   core AM/MC unweighted|E0=100.1|En=31 MeV                 0.62
+   core AM/MC maxrel50|E0=100.1|En=25 meV                   0.35
+   core AM/MC maxrel50|E0=100.1|En=1 eV                     0.27
+   core AM/MC maxrel50|E0=100.1|En=0.96 MeV                 0.86
+   core AM/MC maxrel50|E0=100.1|En=31 MeV                   0.75
+   core AM/MC unweighted|E0=271.7|En=25 meV                 0.97
+   core AM/MC unweighted|E0=271.7|En=1 eV                   0.90
+   core AM/MC unweighted|E0=271.7|En=0.96 MeV               1.39
+   core AM/MC unweighted|E0=271.7|En=31 MeV                 0.89
+   core AM/MC maxrel50|E0=271.7|En=25 meV                   0.98
+   core AM/MC maxrel50|E0=271.7|En=1 eV                     0.88
+   core AM/MC maxrel50|E0=271.7|En=0.96 MeV                 1.27
+   core AM/MC maxrel50|E0=271.7|En=31 MeV                   1.07
+   core AM/MC unweighted|E0=424.8|En=25 meV                 0.97
+   core AM/MC unweighted|E0=424.8|En=1 eV                   1.03
+   core AM/MC unweighted|E0=424.8|En=0.96 MeV               1.61
+   core AM/MC unweighted|E0=424.8|En=31 MeV                 0.95
+   core AM/MC maxrel50|E0=424.8|En=25 meV                   0.90
+   core AM/MC maxrel50|E0=424.8|En=1 eV                     0.99
+   core AM/MC maxrel50|E0=424.8|En=0.96 MeV                 1.30
+   core AM/MC maxrel50|E0=424.8|En=31 MeV                   1.15
+exit 0
