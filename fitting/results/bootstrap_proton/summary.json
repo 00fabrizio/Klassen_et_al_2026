@@ -1,0 +1,15 @@
+{
+ "species": "proton",
+ "B_requested": 140,
+ "n_finished_on_disk": 140,
+ "n_replicates": 140,
+ "n_converged": 140,
+ "n_nonconverged": 0,
+ "n_failed": 0,
+ "nonconverged_reps": [],
+ "failed_reps": [],
+ "wall_min_median": 2.728139817714691,
+ "wall_min_mean": 3.8292164971998757,
+ "n_flagged_pairs": 5,
+ "point_estimate": "fitting/results/proton_refit.csv"
+}
